@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>考级数据看板 - 2026Q1</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f1623; color: #e2e8f0; min-height: 100vh; }
+#login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f1623; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+#login-box { background: #1a2332; border-radius: 12px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+#login-box h2 { color: #fff; margin-bottom: 20px; font-size: 20px; }
+#login-box input { background: #0f1623; border: 1px solid #2a3444; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 16px; width: 240px; outline: none; }
+#login-box input:focus { border-color: #3b82f6; }
+#login-box button { margin-top: 16px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-size: 16px; cursor: pointer; }
+#login-box button:hover { background: #2563eb; }
+#login-error { color: #ef4444; margin-top: 12px; font-size: 14px; display: none; }
+.nav { background: linear-gradient(135deg, #1a2332 0%, #0f1623 100%); border-bottom: 1px solid #2a3444; padding: 0; position: sticky; top: 0; z-index: 100; }
+.nav-banner { background: linear-gradient(135deg, #1e3a5f 0%, #0d253f 50%, #1a1a3e 100%); padding: 32px 40px 16px; text-align: center; position: relative; overflow: hidden; }
+.nav-banner::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.15) 0%, transparent 70%); pointer-events: none; }
+.nav-banner-title { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: 2px; margin-bottom: 8px; position: relative; }
+.nav-banner-sub { font-size: 14px; color: #94a3b8; position: relative; }
+.nav-banner-sub span { background: rgba(59,130,246,0.2); padding: 4px 12px; border-radius: 4px; margin: 0 6px; color: #7dd3fc; }
+.nav-tabbar { display: flex; align-items: center; padding: 0 24px; height: 44px; background: #1a2332; border-top: 1px solid #2a3444; justify-content: center; position: relative; }
+.nav-tabs { display: flex; gap: 4px; }
+.nav-tab { padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; color: #94a3b8; transition: all 0.2s; }
+.nav-tab:hover { color: #e2e8f0; background: #2a3444; }
+.nav-tab.active { color: #fff; background: #3b82f6; }
+.nav-right { position: absolute; right: 24px; display: flex; gap: 8px; }
+.btn-refresh { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.4); color: #7dd3fc; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.btn-refresh:hover { background: rgba(59,130,246,0.3); color: #fff; }
+.btn-archive { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #6ee7b7; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.btn-archive:hover { background: rgba(16,185,129,0.3); color: #fff; }
+.main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+.page { display: none; }
+.page.active { display: block; }
+.cards-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card { background: #1a2332; border-radius: 10px; padding: 20px; border-left: 4px solid #3b82f6; }
+.card-label { font-size: 12px; color: #94a3b8; margin-bottom: 8px; letter-spacing: 0.5px; }
+.card-value { font-size: 22px; font-weight: 700; color: #fff; }
+.card-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+.card:nth-child(2) { border-left-color: #8b5cf6; }
+.card:nth-child(3) { border-left-color: #10b981; }
+.card:nth-child(4) { border-left-color: #06b6d4; }
+.card:nth-child(5) { border-left-color: #f59e0b; }
+.card:nth-child(6) { border-left-color: #ec4899; }
+.card:nth-child(7) { border-left-color: #8b5cf6; }
+.card:nth-child(8) { border-left-color: #10b981; }
+.section { background: #1a2332; border-radius: 10px; padding: 24px; margin-bottom: 24px; }
+.section-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+.section-conclusion { font-size: 13px; color: #f59e0b; background: rgba(245,158,11,0.1); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; line-height: 1.6; }
+.chart-container { width: 100%; height: 350px; }
+.chart-container-sm { width: 100%; height: 280px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+.data-table th { background: #0f1623; color: #94a3b8; padding: 10px 12px; text-align: left; font-weight: 500; border-bottom: 1px solid #2a3444; }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid #1e2a3a; color: #e2e8f0; position: relative; }
+.data-table tr:hover td { background: rgba(59,130,246,0.05); }
+.text-green { color: #10b981; }
+.text-red { color: #ef4444; }
+.text-yellow { color: #f59e0b; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+.district-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.district-tab { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #94a3b8; background: #1a2332; border: 1px solid #2a3444; transition: all 0.2s; }
+.district-tab:hover { color: #e2e8f0; border-color: #3b82f6; }
+.district-tab.active { color: #fff; background: #3b82f6; border-color: #3b82f6; }
+.top3 { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.top3-item { background: #0f1623; border-radius: 10px; padding: 16px 24px; flex: 1; min-width: 200px; border: 1px solid #2a3444; }
+.top3-item:nth-child(1) { background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05)); border-color: rgba(255,215,0,0.4); }
+.top3-item:nth-child(2) { background: linear-gradient(135deg, rgba(192,192,192,0.15), rgba(192,192,192,0.05)); border-color: rgba(192,192,192,0.4); }
+.top3-item:nth-child(3) { background: linear-gradient(135deg, rgba(205,127,50,0.15), rgba(205,127,50,0.05)); border-color: rgba(205,127,50,0.4); }
+.top3-rank { font-size: 24px; margin-right: 8px; }
+.top3-name { font-size: 16px; font-weight: 600; color: #fff; display: inline; }
+.top3-stats { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+.district-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.district-kpi-card { background: #1a2332; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid #2a3444; }
+.district-kpi-label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+.district-kpi-value { font-size: 22px; font-weight: 700; color: #3b82f6; }
+.district-kpi-rank { font-size: 12px; color: #f59e0b; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="login-overlay">
+  <div id="login-box">
+    <h2>考级数据看板</h2>
+    <input type="password" id="pwd-input" placeholder="请输入访问密码" onkeydown="if(event.key==='Enter')checkPwd()">
+    <br><button onclick="checkPwd()">进入</button>
+    <div id="login-error">密码错误，请重试</div>
+  </div>
+</div>
+<nav class="nav">
+  <div class="nav-banner">
+    <div class="nav-banner-title">美术考级数据看板</div>
+    <div class="nav-banner-sub"><span>2026Q1</span></div>
+  </div>
+  <div class="nav-tabbar">
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="switchPage('overview')">总览</div>
+      <div class="nav-tab" onclick="switchPage('team')">团队</div>
+    </div>
+    <div class="nav-right">
+      <span style="font-size:12px;color:#64748b;margin-right:12px">更新时间：2026-06-11 10:33</span>
+      <button class="btn-archive" onclick="archiveData()">&#x1F4E6; 归档</button>
+      <button class="btn-refresh" onclick="refreshData()">&#x21bb; 刷新数据</button>
+    </div>
+  </div>
+</nav>
+<div class="main">
+<div id="page-overview" class="page active"></div>
+<div id="page-team" class="page"></div>
+</div>
+
+<script>
+const DATA = {"cards": {"reg_count": 4753, "target": 4600, "completion_rate": 103.3, "hours_achieved": 16640, "hours_target": 16000, "hours_completion": 104.0, "reg_rate": 15.06, "gmv": 1254250}, "history": [{"time": "24年Q1", "reg_count": 7410, "reg_rate": 0.1282, "hours": 26098, "target": 6277, "completion_rate": 1.181}, {"time": "24年Q3", "reg_count": 7338, "reg_rate": 0.138, "hours": 26114, "target": 6600, "completion_rate": 1.112}, {"time": "24年Q4", "reg_count": 7091, "reg_rate": 0.151, "hours": 24488, "target": 6600, "completion_rate": 1.074}, {"time": "25年Q1", "reg_count": 6390, "reg_rate": 0.1563, "hours": 22200, "target": 6150, "completion_rate": 1.039}, {"time": "25年Q3", "reg_count": 5940, "reg_rate": 0.1526, "hours": 21108, "target": 5500, "completion_rate": 1.08}, {"time": "25年Q4", "reg_count": 5346, "reg_rate": 0.157401955011188, "hours": 18742, "target": 5000, "completion_rate": 1.0692}, {"time": "26年Q1", "reg_count": 4753, "reg_rate": 0.15057535324394322, "hours": "16640", "target": 4600, "completion_rate": 1.0332608695652175}], "history_changes": {"环比": {"reg_count": -0.1109, "reg_rate": -0.0068, "hours": -0.1122, "completion_rate": -0.0336}, "同比": {"reg_count": -0.2562, "reg_rate": -0.0057, "hours": -0.2505, "completion_rate": -0.0055}}, "daily": {"dates": ["2026-03-06", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19"], "daily_count": [1062, 747, 683, 202, 329, 357, 300, 248, 229, 212, 73, 90, 114, 107], "cumulative": [1062, 1809, 2492, 2694, 3023, 3380, 3680, 3928, 4157, 4369, 4442, 4532, 4646, 4753]}, "mtd": [{"date": "2026-03-06", "label": "3.6\n周五", "daily_target": 460, "cum_target": 460}, {"date": "2026-03-07", "label": "3.7\n周六", "daily_target": 598, "cum_target": 1058}, {"date": "2026-03-08", "label": "3.8\n周曰", "daily_target": 598, "cum_target": 1656}, {"date": "2026-03-09", "label": "3.9\n周一", "daily_target": 138, "cum_target": 1794}, {"date": "2026-03-10", "label": "3.10\n周二", "daily_target": 368, "cum_target": 2162}, {"date": "2026-03-11", "label": "3.11\n周三", "daily_target": 368, "cum_target": 2530}, {"date": "2026-03-12", "label": "3.12\n周四", "daily_target": 368, "cum_target": 2898}, {"date": "2026-03-13", "label": "3.13\n周五", "daily_target": 460, "cum_target": 3358}, {"date": "2026-03-14", "label": "3.14\n周六", "daily_target": 552, "cum_target": 3910}, {"date": "2026-03-15", "label": "3.15\n周曰", "daily_target": 552, "cum_target": 4462}, {"date": "2026-03-16", "label": "3.16\n周一", "daily_target": 46, "cum_target": 4508}, {"date": "2026-03-17", "label": "3.17\n周二", "daily_target": 46, "cum_target": 4554}, {"date": "2026-03-18", "label": "3.18\n周三", "daily_target": 46, "cum_target": 4600}, {"date": "2026-03-19", "label": "3.19\n周四", "daily_target": 0, "cum_target": 4600}], "district_stats": [{"district": "教学一区", "pool_count": 8038, "reg_count": 1298, "target": 1268, "completion_rate": 1.023659305993691, "reg_rate": 0.16148295595919382, "domestic_reg": 1041, "overseas_reg": 257}, {"district": "C区", "pool_count": 3011, "reg_count": 427, "target": 425, "completion_rate": 1.0047058823529411, "reg_rate": 0.14181335104616408, "domestic_reg": 313, "overseas_reg": 114}, {"district": "教学三区", "pool_count": 9052, "reg_count": 1299, "target": 1309, "completion_rate": 0.9923605805958747, "reg_rate": 0.14350419796730005, "domestic_reg": 991, "overseas_reg": 308}, {"district": "教学二区", "pool_count": 10224, "reg_count": 1550, "target": 1571, "completion_rate": 0.9866327180140039, "reg_rate": 0.15160406885758998, "domestic_reg": 1282, "overseas_reg": 268}, {"district": "DEMO特战队", "pool_count": 178, "reg_count": 19, "target": 27, "completion_rate": 0.7037037037037037, "reg_rate": 0.10674157303370786, "domestic_reg": 15, "overseas_reg": 4}, {"district": "无归属", "pool_count": 0, "reg_count": 160, "target": 0, "completion_rate": 0, "reg_rate": 0, "domestic_reg": 145, "overseas_reg": 15}], "district_summary": {"district": "学区汇总", "pool_count": 30503, "reg_count": 4593, "target": 4600, "completion_rate": 0.9984782608695653, "reg_rate": 0.15057535324394322, "domestic_reg": 3642, "overseas_reg": 951}, "region": {"domestic": {"pool": 16875, "reg": 3642, "rate": 0.21582222222222222, "hours": 13559, "last_rate": 0.229}, "overseas": {"pool": 13628, "reg": 951, "rate": 0.06978280011740534, "hours": 3081, "last_rate": 0.064}}, "subject_stats": [{"考试科目名称": "漫画", "报名人数": 1876, "课时数": 6789, "人数占比": 0.3946980854197349, "课时占比": 0.40799278846153847}, {"考试科目名称": "素描", "报名人数": 1447, "课时数": 5416, "人数占比": 0.3044393014937934, "课时占比": 0.32548076923076924}, {"考试科目名称": "儿童画", "报名人数": 1294, "课时数": 4016, "人数占比": 0.2722491058278982, "课时占比": 0.24134615384615385}, {"考试科目名称": "速写", "报名人数": 80, "课时数": 229, "人数占比": 0.016831474857984433, "课时占比": 0.01376201923076923}, {"考试科目名称": "国画花鸟", "报名人数": 56, "课时数": 190, "人数占比": 0.011782032400589101, "课时占比": 0.01141826923076923}], "subject_first_stats": {"漫画": {"first": 240, "repeat": 1636, "first_ratio": 0.1279317697228145}, "素描": {"first": 177, "repeat": 1270, "first_ratio": 0.12232204561161023}, "儿童画": {"first": 591, "repeat": 703, "first_ratio": 0.4567233384853168}, "速写": {"first": 15, "repeat": 65, "first_ratio": 0.1875}, "国画花鸟": {"first": 13, "repeat": 43, "first_ratio": 0.23214285714285715}}, "subject_history": {"漫画": {"last_first_count": 263, "last_first_ratio": 0.118}, "素描": {"last_first_count": 467, "last_first_ratio": 0.284}, "儿童画": {"last_first_count": 664, "last_first_ratio": 0.49}, "国画花鸟": {"last_first_count": 24, "last_first_ratio": 0.324}, "速写": {"last_first_count": 27, "last_first_ratio": 0.675}}, "subject_level_stats": [{"科目级别": "儿童画1级", "报名人数": 32, "课时数": 64, "人数占比": 0.006732589943193772}, {"科目级别": "儿童画2级", "报名人数": 103, "课时数": 206, "人数占比": 0.021670523879654954}, {"科目级别": "儿童画3级", "报名人数": 559, "课时数": 1677, "人数占比": 0.11760993057016621}, {"科目级别": "儿童画4级", "报名人数": 331, "课时数": 993, "人数占比": 0.06964022722491059}, {"科目级别": "儿童画5级", "报名人数": 269, "课时数": 1076, "人数占比": 0.05659583420997265}, {"科目级别": "国画花鸟1级", "报名人数": 2, "课时数": 6, "人数占比": 0.00042078687144961075}, {"科目级别": "国画花鸟2级", "报名人数": 9, "课时数": 27, "人数占比": 0.0018935409215232485}, {"科目级别": "国画花鸟3级", "报名人数": 23, "课时数": 69, "人数占比": 0.004839049021670524}, {"科目级别": "国画花鸟4级", "报名人数": 13, "课时数": 52, "人数占比": 0.00273511466442247}, {"科目级别": "国画花鸟5级", "报名人数": 9, "课时数": 36, "人数占比": 0.0018935409215232485}, {"科目级别": "漫画10级", "报名人数": 281, "课时数": 1124, "人数占比": 0.059120555438670314}, {"科目级别": "漫画3级", "报名人数": 219, "课时数": 438, "人数占比": 0.04607616242373238}, {"科目级别": "漫画4级", "报名人数": 150, "课时数": 450, "人数占比": 0.031559015358720806}, {"科目级别": "漫画5级", "报名人数": 127, "课时数": 381, "人数占比": 0.026719966337050285}, {"科目级别": "漫画6级", "报名人数": 285, "课时数": 1140, "人数占比": 0.05996212918156953}, {"科目级别": "漫画7级", "报名人数": 312, "课时数": 1248, "人数占比": 0.06564275194613928}, {"科目级别": "漫画8级", "报名人数": 262, "课时数": 1048, "人数占比": 0.05512308015989901}, {"科目级别": "漫画9级", "报名人数": 240, "课时数": 960, "人数占比": 0.05049442457395329}, {"科目级别": "素描10级", "报名人数": 38, "课时数": 152, "人数占比": 0.007994950557542605}, {"科目级别": "素描2级", "报名人数": 37, "课时数": 111, "人数占比": 0.007784557121817799}, {"科目级别": "素描3级", "报名人数": 335, "课时数": 1005, "人数占比": 0.0704818009678098}, {"科目级别": "素描4级", "报名人数": 227, "课时数": 908, "人数占比": 0.047759309909530825}, {"科目级别": "素描5级", "报名人数": 159, "课时数": 636, "人数占比": 0.03345255628024406}, {"科目级别": "素描6级", "报名人数": 221, "课时数": 884, "人数占比": 0.04649694929518199}, {"科目级别": "素描7级", "报名人数": 226, "课时数": 904, "人数占比": 0.04754891647380602}, {"科目级别": "素描8级", "报名人数": 122, "课时数": 488, "人数占比": 0.02566799915842626}, {"科目级别": "素描9级", "报名人数": 82, "课时数": 328, "人数占比": 0.017252261729434042}, {"科目级别": "速写1级", "报名人数": 11, "课时数": 22, "人数占比": 0.0023143277929728594}, {"科目级别": "速写2级", "报名人数": 12, "课时数": 36, "人数占比": 0.0025247212286976647}, {"科目级别": "速写3级", "报名人数": 57, "课时数": 171, "人数占比": 0.011992425836313906}], "subject_level_ranking": [{"name": "儿童画3级", "current": 559, "last": 577, "change": -18, "change_rate": -0.03119584055459272}, {"name": "素描3级", "current": 335, "last": 449, "change": -114, "change_rate": -0.25389755011135856}, {"name": "儿童画4级", "current": 331, "last": 319, "change": 12, "change_rate": 0.03761755485893417}, {"name": "漫画7级", "current": 312, "last": 310, "change": 2, "change_rate": 0.0064516129032258064}, {"name": "漫画6级", "current": 285, "last": 374, "change": -89, "change_rate": -0.23796791443850268}, {"name": "漫画10级", "current": 281, "last": 389, "change": -108, "change_rate": -0.2776349614395887}, {"name": "儿童画5级", "current": 269, "last": 288, "change": -19, "change_rate": -0.06597222222222222}, {"name": "漫画8级", "current": 262, "last": 278, "change": -16, "change_rate": -0.05755395683453238}, {"name": "漫画9级", "current": 240, "last": 327, "change": -87, "change_rate": -0.26605504587155965}, {"name": "素描4级", "current": 227, "last": 219, "change": 8, "change_rate": 0.0365296803652968}, {"name": "素描7级", "current": 226, "last": 154, "change": 72, "change_rate": 0.4675324675324675}, {"name": "素描6级", "current": 221, "last": 287, "change": -66, "change_rate": -0.22996515679442509}, {"name": "漫画3级", "current": 219, "last": 269, "change": -50, "change_rate": -0.18587360594795538}, {"name": "素描5级", "current": 159, "last": 292, "change": -133, "change_rate": -0.4554794520547945}, {"name": "漫画4级", "current": 150, "last": 153, "change": -3, "change_rate": -0.0196078431372549}, {"name": "漫画5级", "current": 127, "last": 129, "change": -2, "change_rate": -0.015503875968992248}, {"name": "素描8级", "current": 122, "last": 98, "change": 24, "change_rate": 0.24489795918367346}, {"name": "儿童画2级", "current": 103, "last": 143, "change": -40, "change_rate": -0.27972027972027974}, {"name": "素描9级", "current": 82, "last": 47, "change": 35, "change_rate": 0.7446808510638298}, {"name": "速写3级", "current": 57, "last": 0, "change": 57, "change_rate": 0}], "tier_stats": [{"tier": "A层", "pool_count": 4673, "reg_count": 2902, "rate": 0.6210143376845709, "last_rate": 0.6184, "rate_change": 0.0026143376845709776}, {"tier": "B层", "pool_count": 5658, "reg_count": 815, "rate": 0.14404383174266525, "last_rate": 0.1531, "rate_change": -0.009056168257334768}, {"tier": "C层", "pool_count": 1152, "reg_count": 126, "rate": 0.109375, "last_rate": 0.127, "rate_change": -0.017625000000000002}, {"tier": "D层", "pool_count": 19020, "reg_count": 750, "rate": 0.03943217665615142, "last_rate": 0.0422, "rate_change": -0.002767823343848584}], "stage_stats": [{"stage": "L1", "pool_count": 3979, "reg_count": 414, "rate": 0.10404624277456648}, {"stage": "L2", "pool_count": 5789, "reg_count": 794, "rate": 0.13715667645534635}, {"stage": "L3", "pool_count": 4507, "reg_count": 618, "rate": 0.1371200355003328}, {"stage": "L4", "pool_count": 4181, "reg_count": 592, "rate": 0.1415929203539823}, {"stage": "L5", "pool_count": 8409, "reg_count": 1540, "rate": 0.1831371149958378}, {"stage": "L6", "pool_count": 3638, "reg_count": 635, "rate": 0.17454645409565694}, {"stage": "高阶", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "院派", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "大师", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "不在班", "pool_count": 0, "reg_count": 0, "rate": 0}], "mj_by_district": [{"district": "教学三区", "total": 388, "reg": 185, "rate": 0.47680412371134023}, {"district": "C区", "total": 138, "reg": 63, "rate": 0.45652173913043476}, {"district": "教学一区", "total": 345, "reg": 144, "rate": 0.41739130434782606}, {"district": "教学二区", "total": 527, "reg": 206, "rate": 0.3908918406072106}, {"district": "DEMO特战队", "total": 3, "reg": 0, "rate": 0.0}, {"district": "无归属", "total": 0, "reg": 0, "rate": 0}], "mj_overall": {"total": 1401, "reg": 598, "rate": 0.4268}, "repeat_history": [{"time": "2026年Q1", "first_count": 892, "first_ratio": 0.187670944666526, "repeat_count": 3861, "repeat_ratio": 0.812329055333474}, {"time": "2024年Q3", "first_count": 1151, "first_ratio": 0.157, "repeat_count": 6187, "repeat_ratio": 0.843}, {"time": "2024年Q4", "first_count": 1444, "first_ratio": 0.21, "repeat_count": 5437, "repeat_ratio": 0.79}, {"time": "2025年Q1", "first_count": 1145, "first_ratio": 0.179, "repeat_count": 5245, "repeat_ratio": 0.821}, {"time": "2025年Q3", "first_count": 839, "first_ratio": 0.147503516174402, "repeat_count": 4849, "repeat_ratio": 0.852496483825598}, {"time": "2025年Q4", "first_count": 1445, "first_ratio": 0.2702955, "repeat_count": 3901, "repeat_ratio": 0.729704451926674}, {"time": "2026年Q1", "first_count": 1036, "first_ratio": 0.21796759941089838, "repeat_count": 3717, "repeat_ratio": 0.7820324005891016}], "first_report": {"count": 1036, "ratio": 0.218}, "repeat_report": {"count": 3717, "ratio": 0.782}, "quarter_label": "2026Q1", "honor": {"teachers": [{"rank": 1, "name": "大可乐", "reg_count": 33, "district": "教学二区"}, {"rank": 2, "name": "格菲", "reg_count": 32, "district": "教学二区"}, {"rank": 3, "name": "朝朝", "reg_count": 31, "district": "教学三区"}, {"rank": 4, "name": "猫无", "reg_count": 31, "district": "教学二区"}, {"rank": 5, "name": "木下", "reg_count": 30, "district": "教学二区"}, {"rank": 6, "name": "淘7", "reg_count": 30, "district": "教学一区"}, {"rank": 7, "name": "吉雅", "reg_count": 29, "district": "教学一区"}, {"rank": 8, "name": "知之", "reg_count": 29, "district": "教学三区"}, {"rank": 9, "name": "耳朵", "reg_count": 29, "district": "教学二区"}, {"rank": 10, "name": "四乐", "reg_count": 28, "district": "教学二区"}], "teams": [{"rank": 1, "name": "云卷云舒团队", "completion_rate": 1.0650224215246638, "district": "教学三区"}, {"rank": 2, "name": "节节高升团队", "completion_rate": 1.0511363636363635, "district": "教学一区"}, {"rank": 3, "name": "风雨同粥团队", "completion_rate": 1.0183206106870228, "district": "教学一区"}, {"rank": 4, "name": "福气满满团队", "completion_rate": 1.0160183066361557, "district": "教学一区"}], "groups": [{"rank": 1, "name": "世外桃圆组", "completion_rate": 1.1130952380952381, "district": "教学三区"}, {"rank": 2, "name": "飞天小女警组", "completion_rate": 1.0919540229885059, "district": "教学一区"}, {"rank": 3, "name": "闪亮登场组", "completion_rate": 1.0490196078431373, "district": "教学二区"}, {"rank": 4, "name": "闪耀星光组", "completion_rate": 1.0466321243523315, "district": "教学一区"}, {"rank": 5, "name": "奇思妙想组", "completion_rate": 1.0338983050847457, "district": "教学二区"}]}, "conclusions": {"overview": "本期报名4753人，完成率103.3%。环比上期（5346人）下降11.1%。同比去年同期（6390人）下降25.6%。", "daily": "截至2026-03-19，累计报名4753人，达MTD终期目标103.3%。最后一日新增107人。", "district": "完成率最高：教学一区 102.4%；最低：无归属 0.0%。整体完成率103.3%。", "region": "国内报名率21.58%，环比上期下降1.32个百分点；海外报名率6.98%，环比上期上升0.58个百分点。", "subject": "报名人数最多科目：漫画 1876人，占比39.5%。", "tier": "A层报考率62.10%(↑0.26pp)；B层报考率14.40%(↓0.91pp)；C层报考率10.94%(↓1.76pp)；D层报考率3.94%(↓0.28pp)。", "stage": "报名人数最多阶段：L5（1540人）；报名率最高：L5（18.31%）。", "mj": "满级学员整体报名率42.68%。报名率最高：教学三区 47.68%", "repeat": "本期首报1036人，占比21.8%，环比上期下降5.23个百分点；复报3717人，占比78.2%。"}, "team_page": {"教学一区": {"teams": [{"name": "节节高升团队", "reg_count": 185, "target": 176, "completion_rate": 1.0511363636363635}, {"name": "风雨同粥团队", "reg_count": 667, "target": 655, "completion_rate": 1.0183206106870228}, {"name": "福气满满团队", "reg_count": 444, "target": 437, "completion_rate": 1.0160183066361557}], "groups": [{"name": "飞天小女警组", "team": "节节高升团队", "reg_count": 95, "target": 87, "completion_rate": 1.0919540229885059}, {"name": "闪耀星光组", "team": "风雨同粥团队", "reg_count": 202, "target": 193, "completion_rate": 1.0466321243523315}, {"name": "多财多亿组", "team": "福气满满团队", "reg_count": 254, "target": 246, "completion_rate": 1.032520325203252}, {"name": "畅通无组", "team": "风雨同粥团队", "reg_count": 188, "target": 185, "completion_rate": 1.0162162162162163}, {"name": "同心协力组", "team": "风雨同粥团队", "reg_count": 233, "target": 231, "completion_rate": 1.0086580086580086}, {"name": "喜气洋洋组", "team": "节节高升团队", "reg_count": 90, "target": 90, "completion_rate": 1.0}, {"name": "途遥心迩组", "team": "福气满满团队", "reg_count": 161, "target": 165, "completion_rate": 0.9757575757575757}, {"name": "略胜一筹组", "team": "福气满满团队", "reg_count": 8, "target": 9, "completion_rate": 0.8888888888888888}, {"name": "钟灵毓秀组", "team": "风雨同粥团队", "reg_count": 17, "target": 21, "completion_rate": 0.8095238095238095}], "teachers_top3": [{"name": "淘7", "reg_count": 30, "target": 26, "completion_rate": 1.1538461538461537}, {"name": "吉雅", "reg_count": 29, "target": 26, "completion_rate": 1.1153846153846154}, {"name": "粥几", "reg_count": 27, "target": 26, "completion_rate": 1.0384615384615385}], "subject_level": [{"科目级别": "儿童画1级", "报名人数": 7, "占比": 0.00539291217257319}, {"科目级别": "儿童画2级", "报名人数": 27, "占比": 0.020801232665639446}, {"科目级别": "儿童画3级", "报名人数": 160, "占比": 0.12326656394453005}, {"科目级别": "儿童画4级", "报名人数": 107, "占比": 0.08243451463790447}, {"科目级别": "儿童画5级", "报名人数": 86, "占比": 0.0662557781201849}, {"科目级别": "国画花鸟2级", "报名人数": 5, "占比": 0.003852080123266564}, {"科目级别": "国画花鸟3级", "报名人数": 6, "占比": 0.004622496147919877}, {"科目级别": "国画花鸟4级", "报名人数": 2, "占比": 0.0015408320493066256}, {"科目级别": "国画花鸟5级", "报名人数": 2, "占比": 0.0015408320493066256}, {"科目级别": "漫画10级", "报名人数": 75, "占比": 0.05778120184899846}, {"科目级别": "漫画3级", "报名人数": 65, "占比": 0.05007704160246533}, {"科目级别": "漫画4级", "报名人数": 45, "占比": 0.03466872110939907}, {"科目级别": "漫画5级", "报名人数": 26, "占比": 0.020030816640986132}, {"科目级别": "漫画6级", "报名人数": 76, "占比": 0.05855161787365177}, {"科目级别": "漫画7级", "报名人数": 90, "占比": 0.06933744221879815}, {"科目级别": "漫画8级", "报名人数": 78, "占比": 0.060092449922958396}, {"科目级别": "漫画9级", "报名人数": 54, "占比": 0.04160246533127889}, {"科目级别": "素描10级", "报名人数": 13, "占比": 0.010015408320493066}, {"科目级别": "素描2级", "报名人数": 7, "占比": 0.00539291217257319}, {"科目级别": "素描3级", "报名人数": 93, "占比": 0.07164869029275808}, {"科目级别": "素描4级", "报名人数": 58, "占比": 0.04468412942989214}, {"科目级别": "素描5级", "报名人数": 35, "占比": 0.026964560862865947}, {"科目级别": "素描6级", "报名人数": 52, "占比": 0.040061633281972264}, {"科目级别": "素描7级", "报名人数": 51, "占比": 0.039291217257318954}, {"科目级别": "素描8级", "报名人数": 30, "占比": 0.023112480739599383}, {"科目级别": "素描9级", "报名人数": 24, "占比": 0.01848998459167951}, {"科目级别": "速写1级", "报名人数": 2, "占比": 0.0015408320493066256}, {"科目级别": "速写2级", "报名人数": 4, "占比": 0.0030816640986132513}, {"科目级别": "速写3级", "报名人数": 18, "占比": 0.01386748844375963}], "stages": [{"stage": "L1", "pool_count": 1200, "reg_count": 142, "rate": 0.11833333333333333}, {"stage": "L2", "pool_count": 1403, "reg_count": 205, "rate": 0.14611546685673557}, {"stage": "L3", "pool_count": 1343, "reg_count": 216, "rate": 0.16083395383469842}, {"stage": "L4", "pool_count": 1084, "reg_count": 177, "rate": 0.16328413284132842}, {"stage": "L5", "pool_count": 2234, "reg_count": 428, "rate": 0.19158460161145927}, {"stage": "L6", "pool_count": 774, "reg_count": 130, "rate": 0.16795865633074936}, {"stage": "高阶", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "院派", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "大师", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "不在班", "pool_count": 0, "reg_count": 0, "rate": 0}], "region": {"domestic": {"pool": 4809, "reg": 1041, "rate": 0.2164691203992514}, "overseas": {"pool": 3229, "reg": 257, "rate": 0.07959120470733973}}, "tiers": [{"tier": "A层", "pool_count": 1289, "reg_count": 786, "rate": 0.6097750193948798}, {"tier": "B层", "pool_count": 1507, "reg_count": 255, "rate": 0.16921035169210352}, {"tier": "C层", "pool_count": 336, "reg_count": 40, "rate": 0.11904761904761904}, {"tier": "D层", "pool_count": 4906, "reg_count": 217, "rate": 0.044231553200163067}], "mj": {"mj_rate": 0.41739130434782606, "non_mj_rate": 0.15000649941505265, "mj_count": 345, "mj_reg": 144}, "first_repeat": {"first": {"pool": 5242, "reg": 257, "rate": 0.04902708889736742}, "repeat": {"pool": 2796, "reg": 1041, "rate": 0.3723175965665236}}, "conclusion": "教学一区本期报名1298人，完成率102.4%，排名第1；报名率16.15%，高于大盘1.09个百分点。满级学员报名率41.74%。", "kpi": {"reg_count": 1298, "target": 1268, "completion_rate": 102.4, "reg_rate": 16.15, "pool_count": 8038, "rank": 1, "total_districts": 5}}, "教学二区": {"teams": [{"name": "奥林匹克团队", "reg_count": 424, "target": 420, "completion_rate": 1.0095238095238095}, {"name": "MVP团队", "reg_count": 1126, "target": 1151, "completion_rate": 0.9782797567332754}], "groups": [{"name": "闪亮登场组", "team": "奥林匹克团队", "reg_count": 214, "target": 204, "completion_rate": 1.0490196078431373}, {"name": "奇思妙想组", "team": "MVP团队", "reg_count": 183, "target": 177, "completion_rate": 1.0338983050847457}, {"name": "熠熠生辉组", "team": "MVP团队", "reg_count": 253, "target": 257, "completion_rate": 0.9844357976653697}, {"name": "可爱多多组", "team": "MVP团队", "reg_count": 264, "target": 270, "completion_rate": 0.9777777777777777}, {"name": "WE组", "team": "MVP团队", "reg_count": 187, "target": 193, "completion_rate": 0.9689119170984456}, {"name": "风雨无阻组", "team": "奥林匹克团队", "reg_count": 210, "target": 217, "completion_rate": 0.967741935483871}, {"name": "百事可爱组", "team": "MVP团队", "reg_count": 223, "target": 233, "completion_rate": 0.9570815450643777}], "teachers_top3": [{"name": "大可乐", "reg_count": 33, "target": 39, "completion_rate": 0.8461538461538461}, {"name": "格菲", "reg_count": 32, "target": 29, "completion_rate": 1.103448275862069}, {"name": "猫无", "reg_count": 31, "target": 29, "completion_rate": 1.0689655172413792}], "subject_level": [{"科目级别": "儿童画1级", "报名人数": 15, "占比": 0.00967741935483871}, {"科目级别": "儿童画2级", "报名人数": 41, "占比": 0.026451612903225806}, {"科目级别": "儿童画3级", "报名人数": 211, "占比": 0.13612903225806453}, {"科目级别": "儿童画4级", "报名人数": 106, "占比": 0.06838709677419355}, {"科目级别": "儿童画5级", "报名人数": 76, "占比": 0.04903225806451613}, {"科目级别": "国画花鸟2级", "报名人数": 4, "占比": 0.0025806451612903226}, {"科目级别": "国画花鸟3级", "报名人数": 8, "占比": 0.005161290322580645}, {"科目级别": "国画花鸟4级", "报名人数": 4, "占比": 0.0025806451612903226}, {"科目级别": "国画花鸟5级", "报名人数": 1, "占比": 0.0006451612903225806}, {"科目级别": "漫画10级", "报名人数": 99, "占比": 0.06387096774193549}, {"科目级别": "漫画3级", "报名人数": 58, "占比": 0.03741935483870968}, {"科目级别": "漫画4级", "报名人数": 34, "占比": 0.02193548387096774}, {"科目级别": "漫画5级", "报名人数": 43, "占比": 0.027741935483870966}, {"科目级别": "漫画6级", "报名人数": 94, "占比": 0.06064516129032258}, {"科目级别": "漫画7级", "报名人数": 91, "占比": 0.05870967741935484}, {"科目级别": "漫画8级", "报名人数": 83, "占比": 0.053548387096774196}, {"科目级别": "漫画9级", "报名人数": 74, "占比": 0.04774193548387097}, {"科目级别": "素描10级", "报名人数": 7, "占比": 0.004516129032258065}, {"科目级别": "素描2级", "报名人数": 7, "占比": 0.004516129032258065}, {"科目级别": "素描3级", "报名人数": 120, "占比": 0.07741935483870968}, {"科目级别": "素描4级", "报名人数": 73, "占比": 0.04709677419354839}, {"科目级别": "素描5级", "报名人数": 46, "占比": 0.02967741935483871}, {"科目级别": "素描6级", "报名人数": 80, "占比": 0.05161290322580645}, {"科目级别": "素描7级", "报名人数": 87, "占比": 0.056129032258064517}, {"科目级别": "素描8级", "报名人数": 46, "占比": 0.02967741935483871}, {"科目级别": "素描9级", "报名人数": 19, "占比": 0.012258064516129033}, {"科目级别": "速写1级", "报名人数": 6, "占比": 0.003870967741935484}, {"科目级别": "速写2级", "报名人数": 2, "占比": 0.0012903225806451613}, {"科目级别": "速写3级", "报名人数": 15, "占比": 0.00967741935483871}], "stages": [{"stage": "L1", "pool_count": 1391, "reg_count": 172, "rate": 0.12365204888569374}, {"stage": "L2", "pool_count": 1936, "reg_count": 282, "rate": 0.14566115702479338}, {"stage": "L3", "pool_count": 1174, "reg_count": 135, "rate": 0.11499148211243612}, {"stage": "L4", "pool_count": 1245, "reg_count": 155, "rate": 0.12449799196787148}, {"stage": "L5", "pool_count": 3036, "reg_count": 555, "rate": 0.18280632411067194}, {"stage": "L6", "pool_count": 1442, "reg_count": 251, "rate": 0.17406380027739252}, {"stage": "高阶", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "院派", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "大师", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "不在班", "pool_count": 0, "reg_count": 0, "rate": 0}], "region": {"domestic": {"pool": 6071, "reg": 1282, "rate": 0.2111678471421512}, "overseas": {"pool": 4153, "reg": 268, "rate": 0.06453166385745245}}, "tiers": [{"tier": "A层", "pool_count": 1626, "reg_count": 1013, "rate": 0.6230012300123001}, {"tier": "B层", "pool_count": 1941, "reg_count": 229, "rate": 0.11798042246264812}, {"tier": "C层", "pool_count": 443, "reg_count": 47, "rate": 0.10609480812641084}, {"tier": "D层", "pool_count": 6214, "reg_count": 261, "rate": 0.04200193112327003}], "mj": {"mj_rate": 0.3908918406072106, "non_mj_rate": 0.13859956687635352, "mj_count": 527, "mj_reg": 206}, "first_repeat": {"first": {"pool": 6657, "reg": 308, "rate": 0.046267087276550996}, "repeat": {"pool": 3567, "reg": 1242, "rate": 0.3481917577796468}}, "conclusion": "教学二区本期报名1550人，完成率98.7%，排名第4；报名率15.16%，高于大盘0.10个百分点。满级学员报名率39.09%。", "kpi": {"reg_count": 1550, "target": 1571, "completion_rate": 98.7, "reg_rate": 15.16, "pool_count": 10224, "rank": 4, "total_districts": 5}}, "教学三区": {"teams": [{"name": "云卷云舒团队", "reg_count": 475, "target": 446, "completion_rate": 1.0650224215246638}, {"name": "朝气蓬勃团队", "reg_count": 824, "target": 862, "completion_rate": 0.9559164733178654}], "groups": [{"name": "世外桃圆组", "team": "云卷云舒团队", "reg_count": 187, "target": 168, "completion_rate": 1.1130952380952381}, {"name": "狮来运转组", "team": "云卷云舒团队", "reg_count": 135, "target": 131, "completion_rate": 1.0305343511450382}, {"name": "废寝忘食组", "team": "云卷云舒团队", "reg_count": 131, "target": 130, "completion_rate": 1.0076923076923077}, {"name": "喜笑颜开组", "team": "朝气蓬勃团队", "reg_count": 222, "target": 222, "completion_rate": 1.0}, {"name": "生生不息组", "team": "朝气蓬勃团队", "reg_count": 192, "target": 202, "completion_rate": 0.9504950495049505}, {"name": "众望攸归组", "team": "朝气蓬勃团队", "reg_count": 190, "target": 206, "completion_rate": 0.9223300970873787}, {"name": "日星月异组", "team": "朝气蓬勃团队", "reg_count": 189, "target": 211, "completion_rate": 0.8957345971563981}], "teachers_top3": [{"name": "朝朝", "reg_count": 31, "target": 22, "completion_rate": 1.4090909090909092}, {"name": "知之", "reg_count": 29, "target": 29, "completion_rate": 1.0}, {"name": "奶球", "reg_count": 27, "target": 30, "completion_rate": 0.9}], "subject_level": [{"科目级别": "儿童画1级", "报名人数": 6, "占比": 0.004618937644341801}, {"科目级别": "儿童画2级", "报名人数": 27, "占比": 0.020785219399538105}, {"科目级别": "儿童画3级", "报名人数": 147, "占比": 0.11316397228637413}, {"科目级别": "儿童画4级", "报名人数": 90, "占比": 0.06928406466512702}, {"科目级别": "儿童画5级", "报名人数": 83, "占比": 0.06389530408006158}, {"科目级别": "国画花鸟1级", "报名人数": 1, "占比": 0.0007698229407236335}, {"科目级别": "国画花鸟3级", "报名人数": 4, "占比": 0.003079291762894534}, {"科目级别": "国画花鸟4级", "报名人数": 4, "占比": 0.003079291762894534}, {"科目级别": "国画花鸟5级", "报名人数": 4, "占比": 0.003079291762894534}, {"科目级别": "漫画10级", "报名人数": 73, "占比": 0.056197074672825253}, {"科目级别": "漫画3级", "报名人数": 64, "占比": 0.049268668206312545}, {"科目级别": "漫画4级", "报名人数": 46, "占比": 0.03541185527328714}, {"科目级别": "漫画5级", "报名人数": 39, "占比": 0.03002309468822171}, {"科目级别": "漫画6级", "报名人数": 83, "占比": 0.06389530408006158}, {"科目级别": "漫画7级", "报名人数": 91, "占比": 0.07005388760585066}, {"科目级别": "漫画8级", "报名人数": 62, "占比": 0.04772902232486528}, {"科目级别": "漫画9级", "报名人数": 74, "占比": 0.05696689761354888}, {"科目级别": "素描10级", "报名人数": 8, "占比": 0.006158583525789068}, {"科目级别": "素描2级", "报名人数": 14, "占比": 0.01077752117013087}, {"科目级别": "素描3级", "报名人数": 92, "占比": 0.07082371054657428}, {"科目级别": "素描4级", "报名人数": 57, "占比": 0.04387990762124711}, {"科目级别": "素描5级", "报名人数": 48, "占比": 0.03695150115473441}, {"科目级别": "素描6级", "报名人数": 68, "占比": 0.05234795996920708}, {"科目级别": "素描7级", "报名人数": 57, "占比": 0.04387990762124711}, {"科目级别": "素描8级", "报名人数": 24, "占比": 0.018475750577367205}, {"科目级别": "素描9级", "报名人数": 12, "占比": 0.009237875288683603}, {"科目级别": "速写1级", "报名人数": 1, "占比": 0.0007698229407236335}, {"科目级别": "速写2级", "报名人数": 3, "占比": 0.0023094688221709007}, {"科目级别": "速写3级", "报名人数": 17, "占比": 0.01308698999230177}], "stages": [{"stage": "L1", "pool_count": 1116, "reg_count": 92, "rate": 0.08243727598566308}, {"stage": "L2", "pool_count": 1878, "reg_count": 238, "rate": 0.12673056443024494}, {"stage": "L3", "pool_count": 1492, "reg_count": 191, "rate": 0.12801608579088472}, {"stage": "L4", "pool_count": 1339, "reg_count": 190, "rate": 0.14189693801344286}, {"stage": "L5", "pool_count": 2283, "reg_count": 415, "rate": 0.18177836180464302}, {"stage": "L6", "pool_count": 944, "reg_count": 173, "rate": 0.1832627118644068}, {"stage": "高阶", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "院派", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "大师", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "不在班", "pool_count": 0, "reg_count": 0, "rate": 0}], "region": {"domestic": {"pool": 4535, "reg": 991, "rate": 0.2185226019845645}, "overseas": {"pool": 4517, "reg": 308, "rate": 0.06818684967899048}}, "tiers": [{"tier": "A层", "pool_count": 1329, "reg_count": 826, "rate": 0.6215199398043642}, {"tier": "B层", "pool_count": 1583, "reg_count": 234, "rate": 0.147820593809223}, {"tier": "C层", "pool_count": 314, "reg_count": 34, "rate": 0.10828025477707007}, {"tier": "D层", "pool_count": 5826, "reg_count": 205, "rate": 0.03518709234466186}], "mj": {"mj_rate": 0.47680412371134023, "non_mj_rate": 0.12857802400738688, "mj_count": 388, "mj_reg": 185}, "first_repeat": {"first": {"pool": 6140, "reg": 239, "rate": 0.038925081433224755}, "repeat": {"pool": 2912, "reg": 1060, "rate": 0.364010989010989}}, "conclusion": "教学三区本期报名1299人，完成率99.2%，排名第3；报名率14.35%，低于大盘0.71个百分点。满级学员报名率47.68%。", "kpi": {"reg_count": 1299, "target": 1309, "completion_rate": 99.2, "reg_rate": 14.35, "pool_count": 9052, "rank": 3, "total_districts": 5}}, "C区": {"teams": [{"name": "节节高升团队", "reg_count": 427, "target": 425, "completion_rate": 1.0047058823529411}], "groups": [{"name": "无往不利组", "team": "节节高升团队", "reg_count": 145, "target": 143, "completion_rate": 1.013986013986014}, {"name": "十拿九稳组", "team": "节节高升团队", "reg_count": 154, "target": 153, "completion_rate": 1.0065359477124183}, {"name": "九稳百顺组", "team": "节节高升团队", "reg_count": 122, "target": 125, "completion_rate": 0.976}], "teachers_top3": [{"name": "小夏", "reg_count": 21, "target": 16, "completion_rate": 1.3125}, {"name": "木柯", "reg_count": 21, "target": 21, "completion_rate": 1.0}, {"name": "库洛", "reg_count": 19, "target": 19, "completion_rate": 1.0}], "subject_level": [{"科目级别": "儿童画1级", "报名人数": 4, "占比": 0.00936768149882904}, {"科目级别": "儿童画2级", "报名人数": 7, "占比": 0.01639344262295082}, {"科目级别": "儿童画3级", "报名人数": 34, "占比": 0.07962529274004684}, {"科目级别": "儿童画4级", "报名人数": 21, "占比": 0.04918032786885246}, {"科目级别": "儿童画5级", "报名人数": 20, "占比": 0.0468384074941452}, {"科目级别": "国画花鸟1级", "报名人数": 1, "占比": 0.00234192037470726}, {"科目级别": "国画花鸟3级", "报名人数": 4, "占比": 0.00936768149882904}, {"科目级别": "国画花鸟4级", "报名人数": 3, "占比": 0.00702576112412178}, {"科目级别": "国画花鸟5级", "报名人数": 1, "占比": 0.00234192037470726}, {"科目级别": "漫画10级", "报名人数": 16, "占比": 0.03747072599531616}, {"科目级别": "漫画3级", "报名人数": 26, "占比": 0.06088992974238876}, {"科目级别": "漫画4级", "报名人数": 21, "占比": 0.04918032786885246}, {"科目级别": "漫画5级", "报名人数": 13, "占比": 0.03044496487119438}, {"科目级别": "漫画6级", "报名人数": 25, "占比": 0.0585480093676815}, {"科目级别": "漫画7级", "报名人数": 31, "占比": 0.07259953161592506}, {"科目级别": "漫画8级", "报名人数": 26, "占比": 0.06088992974238876}, {"科目级别": "漫画9级", "报名人数": 29, "占比": 0.06791569086651054}, {"科目级别": "素描10级", "报名人数": 3, "占比": 0.00702576112412178}, {"科目级别": "素描2级", "报名人数": 9, "占比": 0.02107728337236534}, {"科目级别": "素描3级", "报名人数": 22, "占比": 0.05152224824355972}, {"科目级别": "素描4级", "报名人数": 28, "占比": 0.06557377049180328}, {"科目级别": "素描5级", "报名人数": 22, "占比": 0.05152224824355972}, {"科目级别": "素描6级", "报名人数": 17, "占比": 0.03981264637002342}, {"科目级别": "素描7级", "报名人数": 12, "占比": 0.02810304449648712}, {"科目级别": "素描8级", "报名人数": 12, "占比": 0.02810304449648712}, {"科目级别": "素描9级", "报名人数": 10, "占比": 0.0234192037470726}, {"科目级别": "速写1级", "报名人数": 1, "占比": 0.00234192037470726}, {"科目级别": "速写2级", "报名人数": 3, "占比": 0.00702576112412178}, {"科目级别": "速写3级", "报名人数": 6, "占比": 0.01405152224824356}], "stages": [{"stage": "L1", "pool_count": 264, "reg_count": 8, "rate": 0.030303030303030304}, {"stage": "L2", "pool_count": 564, "reg_count": 68, "rate": 0.12056737588652482}, {"stage": "L3", "pool_count": 442, "reg_count": 71, "rate": 0.16063348416289594}, {"stage": "L4", "pool_count": 485, "reg_count": 67, "rate": 0.13814432989690723}, {"stage": "L5", "pool_count": 823, "reg_count": 138, "rate": 0.16767922235722965}, {"stage": "L6", "pool_count": 433, "reg_count": 75, "rate": 0.17321016166281755}, {"stage": "高阶", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "院派", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "大师", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "不在班", "pool_count": 0, "reg_count": 0, "rate": 0}], "region": {"domestic": {"pool": 1357, "reg": 313, "rate": 0.23065585851142226}, "overseas": {"pool": 1654, "reg": 114, "rate": 0.06892382103990327}}, "tiers": [{"tier": "A层", "pool_count": 410, "reg_count": 267, "rate": 0.651219512195122}, {"tier": "B层", "pool_count": 579, "reg_count": 91, "rate": 0.15716753022452504}, {"tier": "C层", "pool_count": 51, "reg_count": 4, "rate": 0.0784313725490196}, {"tier": "D层", "pool_count": 1971, "reg_count": 65, "rate": 0.03297818366311517}], "mj": {"mj_rate": 0.45652173913043476, "non_mj_rate": 0.12669683257918551, "mj_count": 138, "mj_reg": 63}, "first_repeat": {"first": {"pool": 2022, "reg": 69, "rate": 0.03412462908011869}, "repeat": {"pool": 989, "reg": 358, "rate": 0.3619817997977755}}, "conclusion": "C区本期报名427人，完成率100.5%，排名第2；报名率14.18%，低于大盘0.88个百分点。满级学员报名率45.65%。", "kpi": {"reg_count": 427, "target": 425, "completion_rate": 100.5, "reg_rate": 14.18, "pool_count": 3011, "rank": 2, "total_districts": 5}}, "DEMO特战队": {"teams": [{"name": "DEMO特战队", "reg_count": 19, "target": 27, "completion_rate": 0.7037037037037037}], "groups": [{"name": "风华正茂组", "team": "DEMO特战队", "reg_count": 12, "target": 15, "completion_rate": 0.8}, {"name": "脱颖而出组", "team": "DEMO特战队", "reg_count": 7, "target": 12, "completion_rate": 0.5833333333333334}], "teachers_top3": [{"name": "飞龙", "reg_count": 6, "target": 7, "completion_rate": 0.8571428571428571}, {"name": "晨辰", "reg_count": 2, "target": 4, "completion_rate": 0.5}, {"name": "天使", "reg_count": 2, "target": 3, "completion_rate": 0.6666666666666666}], "subject_level": [{"科目级别": "儿童画3级", "报名人数": 1, "占比": 0.05263157894736842}, {"科目级别": "儿童画4级", "报名人数": 2, "占比": 0.10526315789473684}, {"科目级别": "儿童画5级", "报名人数": 1, "占比": 0.05263157894736842}, {"科目级别": "漫画10级", "报名人数": 1, "占比": 0.05263157894736842}, {"科目级别": "漫画3级", "报名人数": 2, "占比": 0.10526315789473684}, {"科目级别": "漫画5级", "报名人数": 1, "占比": 0.05263157894736842}, {"科目级别": "漫画6级", "报名人数": 2, "占比": 0.10526315789473684}, {"科目级别": "漫画7级", "报名人数": 4, "占比": 0.21052631578947367}, {"科目级别": "漫画9级", "报名人数": 1, "占比": 0.05263157894736842}, {"科目级别": "素描4级", "报名人数": 3, "占比": 0.15789473684210525}, {"科目级别": "素描5级", "报名人数": 1, "占比": 0.05263157894736842}], "stages": [{"stage": "L1", "pool_count": 8, "reg_count": 0, "rate": 0.0}, {"stage": "L2", "pool_count": 8, "reg_count": 1, "rate": 0.125}, {"stage": "L3", "pool_count": 56, "reg_count": 5, "rate": 0.08928571428571429}, {"stage": "L4", "pool_count": 28, "reg_count": 3, "rate": 0.10714285714285714}, {"stage": "L5", "pool_count": 33, "reg_count": 4, "rate": 0.12121212121212122}, {"stage": "L6", "pool_count": 45, "reg_count": 6, "rate": 0.13333333333333333}, {"stage": "高阶", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "院派", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "大师", "pool_count": 0, "reg_count": 0, "rate": 0}, {"stage": "不在班", "pool_count": 0, "reg_count": 0, "rate": 0}], "region": {"domestic": {"pool": 103, "reg": 15, "rate": 0.14563106796116504}, "overseas": {"pool": 75, "reg": 4, "rate": 0.05333333333333334}}, "tiers": [{"tier": "A层", "pool_count": 19, "reg_count": 10, "rate": 0.5263157894736842}, {"tier": "B层", "pool_count": 48, "reg_count": 6, "rate": 0.125}, {"tier": "C层", "pool_count": 8, "reg_count": 1, "rate": 0.125}, {"tier": "D层", "pool_count": 103, "reg_count": 2, "rate": 0.019417475728155338}], "mj": {"mj_rate": 0.0, "non_mj_rate": 0.10857142857142857, "mj_count": 3, "mj_reg": 0}, "first_repeat": {"first": {"pool": 111, "reg": 3, "rate": 0.02702702702702703}, "repeat": {"pool": 67, "reg": 16, "rate": 0.23880597014925373}}, "conclusion": "DEMO特战队本期报名19人，完成率70.4%，排名第5；报名率10.67%，低于大盘4.38个百分点。满级学员报名率0.00%。", "kpi": {"reg_count": 19, "target": 27, "completion_rate": 70.4, "reg_rate": 10.67, "pool_count": 178, "rank": 5, "total_districts": 5}}}, "benchmarks": {"stages": {"L1": 0.104, "L2": 0.1372, "L3": 0.1371, "L4": 0.1416, "L5": 0.1831, "L6": 0.1745, "高阶": 0, "院派": 0, "大师": 0, "不在班": 0}, "region": {"domestic": 0.2158, "overseas": 0.0698}, "tiers": {"A层": 0.621, "B层": 0.144, "C层": 0.1094, "D层": 0.0394}, "mj_rate": 0.4268, "non_mj_rate": 0.1428, "first_rate": 0.0434, "repeat_rate": 0.3598, "subject_level": {"儿童画1级": 0.0067, "儿童画2级": 0.0217, "儿童画3级": 0.1176, "儿童画4级": 0.0696, "儿童画5级": 0.0566, "国画花鸟1级": 0.0004, "国画花鸟2级": 0.0019, "国画花鸟3级": 0.0048, "国画花鸟4级": 0.0027, "国画花鸟5级": 0.0019, "漫画10级": 0.0591, "漫画3级": 0.0461, "漫画4级": 0.0316, "漫画5级": 0.0267, "漫画6级": 0.06, "漫画7级": 0.0656, "漫画8级": 0.0551, "漫画9级": 0.0505, "素描10级": 0.008, "素描2级": 0.0078, "素描3级": 0.0705, "素描4级": 0.0478, "素描5级": 0.0335, "素描6级": 0.0465, "素描7级": 0.0475, "素描8级": 0.0257, "素描9级": 0.0173, "速写1级": 0.0023, "速写2级": 0.0025, "速写3级": 0.012}}};
+const PASSWORD = "2026Q3";
+
+function checkPwd() {
+  const v = document.getElementById("pwd-input").value;
+  if (v === PASSWORD) {
+    document.getElementById("login-overlay").style.display = "none";
+    initDashboard();
+  } else {
+    document.getElementById("login-error").style.display = "block";
+  }
+}
+
+function refreshData() {
+  const btn = event.target;
+  btn.textContent = "⏳ 刷新中...";
+  btn.disabled = true;
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
+}
+
+function archiveData() {
+  if (!confirm("确认归档本期数据？\n将保存本期统计结果到历史归档目录，并回填往期数据表。\n\n请确保已关闭所有Excel文件后点击确定。")) return;
+  const btn = event.target;
+  btn.textContent = "⏳ 归档中...";
+  btn.disabled = true;
+  alert("请双击运行【归档数据.bat】完成归档操作。\n归档完成后点击【刷新数据】查看更新。");
+  btn.textContent = "📦 归档";
+  btn.disabled = false;
+}
+
+function switchPage(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("page-" + page).classList.add("active");
+  event.target.classList.add("active");
+  if (page === "team" && !window._teamInited) { initTeamPage(); window._teamInited = true; }
+}
+
+function pct(v, digits=1) { return (v * 100).toFixed(digits) + "%"; }
+function num(v) { return v.toLocaleString(); }
+function changeClass(v) { return v >= 0 ? "text-green" : "text-red"; }
+function changeStr(v, isRate=false) {
+  if (isRate) return (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
+  return (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
+}
+function kpiColor(rate) {
+  if (rate >= 100) return "#10b981";
+  if (rate >= 80) return "#3b82f6";
+  return "#f97316";
+}
+
+function initDashboard() {
+  renderOverview();
+}
+
+function renderOverview() {
+  const c = DATA.cards;
+  let html = `
+  <div class="cards-row">
+    <div class="card"><div class="card-label">报名人数</div><div class="card-value" style="color:#10b981;font-weight:700">${num(c.reg_count)}</div></div>
+    <div class="card"><div class="card-label">目标人数</div><div class="card-value">${num(c.target)}</div></div>
+    <div class="card"><div class="card-label">报名完成率</div><div class="card-value" style="color:${kpiColor(c.completion_rate)}">${c.completion_rate}%</div></div>
+    <div class="card"><div class="card-label">课时达成</div><div class="card-value">${num(c.hours_achieved)}</div></div>
+    <div class="card"><div class="card-label">课时目标</div><div class="card-value">${num(c.hours_target)}</div></div>
+    <div class="card"><div class="card-label">课时完成率</div><div class="card-value" style="color:${kpiColor(c.hours_completion)}">${c.hours_completion}%</div></div>
+    <div class="card"><div class="card-label">报名率</div><div class="card-value">${c.reg_rate}%</div></div>
+    <div class="card"><div class="card-label">GMV</div><div class="card-value">${num(c.gmv)}</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">本期与往期对比</div>
+    <div class="section-conclusion">${DATA.conclusions.overview}</div>
+    <div id="chart-history" class="chart-container"></div>
+    <table class="data-table"><thead><tr><th>时间</th><th>报名人数</th><th>报考率</th><th>预扣课时</th><th>人数目标</th><th>目标完成率</th></tr></thead><tbody>`;
+
+  DATA.history.forEach(h => {
+    html += `<tr><td>${h.time}</td><td>${num(h.reg_count)}</td><td>${pct(h.reg_rate)}</td><td>${num(h.hours)}</td><td>${num(h.target)}</td><td>${pct(h.completion_rate)}</td></tr>`;
+  });
+  // 环比同比
+  if (DATA.history_changes['环比']) {
+    const hb = DATA.history_changes['环比'];
+    html += `<tr><td>环比</td><td class="${changeClass(hb.reg_count)}">${changeStr(hb.reg_count)}</td><td class="${changeClass(hb.reg_rate)}">${changeStr(hb.reg_rate,true)}</td><td class="${changeClass(hb.hours)}">${changeStr(hb.hours)}</td><td>-</td><td class="${changeClass(hb.completion_rate)}">${changeStr(hb.completion_rate)}</td></tr>`;
+  }
+  if (DATA.history_changes['同比']) {
+    const tb = DATA.history_changes['同比'];
+    html += `<tr><td>同比</td><td class="${changeClass(tb.reg_count)}">${changeStr(tb.reg_count)}</td><td class="${changeClass(tb.reg_rate)}">${changeStr(tb.reg_rate,true)}</td><td class="${changeClass(tb.hours)}">${changeStr(tb.hours)}</td><td>-</td><td class="${changeClass(tb.completion_rate)}">${changeStr(tb.completion_rate)}</td></tr>`;
+  }
+  html += `</tbody></table></div>
+
+  <div class="section">
+    <div class="section-title">每日报名趋势</div>
+    <div class="section-conclusion">${DATA.conclusions.daily}</div>
+    <div id="chart-daily" class="chart-container"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">学区完成情况</div>
+    <div class="section-conclusion">${DATA.conclusions.district}</div>
+    <table class="data-table"><thead><tr><th>学区</th><th>目标</th><th>实际报名</th><th>完成率</th><th>报名率</th><th>国内</th><th>海外</th></tr></thead><tbody>`;
+  const districtRows = DATA.district_stats.filter(d => d.district !== '无归属');
+  const compRatesArr = districtRows.map(d => d.completion_rate);
+  const regRatesArr = districtRows.map(d => d.reg_rate);
+  const maxComp = Math.max(...compRatesArr), minComp = Math.min(...compRatesArr);
+  const maxRegR = Math.max(...regRatesArr), minRegR = Math.min(...regRatesArr);
+  districtRows.forEach(d => {
+    const compColor = d.completion_rate === maxComp ? 'color:#10b981;font-weight:600' : (d.completion_rate === minComp ? 'color:#ef4444;font-weight:600' : (d.completion_rate>=1?'color:#10b981':'color:#f59e0b'));
+    const regRColor = d.reg_rate === maxRegR ? 'color:#10b981;font-weight:600' : (d.reg_rate === minRegR ? 'color:#ef4444;font-weight:600' : '');
+    const barW = Math.min(d.completion_rate * 100, 100);
+    const barColor = d.completion_rate >= 1 ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.12)';
+    html += `<tr><td>${d.district}</td><td>${d.target}</td><td>${d.reg_count}</td><td style="${compColor};position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:${barW}%;background:${barColor};border-radius:3px"></span><span style="position:relative">${pct(d.completion_rate)}</span></td><td style="${regRColor}">${pct(d.reg_rate)}</td><td>${d.domestic_reg}</td><td>${d.overseas_reg}</td></tr>`;
+  });
+  // 学区汇总行
+  const ds = DATA.district_summary;
+  html += `<tr style="font-weight:600;border-top:2px solid #3b82f6"><td>学区汇总</td><td>${ds.target}</td><td>${ds.reg_count}</td><td class="${ds.completion_rate>=1?'text-green':'text-yellow'}">${pct(ds.completion_rate)}</td><td>${pct(ds.reg_rate)}</td><td>${ds.domestic_reg}</td><td>${ds.overseas_reg}</td></tr>`;
+  // 无归属行
+  const ua = DATA.district_stats.find(d => d.district === '无归属');
+  if (ua) {
+    html += `<tr style="color:#94a3b8;border-top:1px dashed #475569"><td>无归属</td><td>-</td><td>${ua.reg_count}</td><td>-</td><td>-</td><td>${ua.domestic_reg}</td><td>${ua.overseas_reg}</td></tr>`;
+  }
+  html += `</tbody></table></div>
+
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">国内/海外对比</div>
+      <div class="section-conclusion">${DATA.conclusions.region}</div>
+      <div id="chart-region" class="chart-container-sm"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">国内/海外分布</div>
+      <div id="chart-region-pie" class="chart-container-sm"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">科目汇总</div>
+    <div class="section-conclusion">${DATA.conclusions.subject}</div>
+    <div id="chart-subject" class="chart-container"></div>
+    <table class="data-table"><thead><tr><th>科目</th><th>报名人数</th><th>课时</th><th>人数占比</th><th>本期首报</th><th>本期首报占比</th><th>本期复报</th><th>上期首报</th><th>首报人数环比</th></tr></thead><tbody>`;
+  DATA.subject_stats.forEach(s => {
+    const hist = DATA.subject_history[s['考试科目名称']] || {};
+    const fs = DATA.subject_first_stats[s['考试科目名称']] || {};
+    const firstCount = fs.first || 0;
+    const repeatCount = fs.repeat || 0;
+    const firstRatio = fs.first_ratio || 0;
+    const lastFirst = hist.last_first_count || 0;
+    const firstChange = lastFirst > 0 ? ((firstCount - lastFirst) / lastFirst * 100).toFixed(1) + '%' : '-';
+    html += `<tr><td>${s['考试科目名称']}</td><td>${s['报名人数']}</td><td>${s['课时数']}</td><td>${pct(s['人数占比'])}</td><td>${firstCount}</td><td>${pct(firstRatio)}</td><td>${repeatCount}</td><td>${lastFirst||'-'}</td><td class="${firstCount>=lastFirst?'text-green':'text-red'}">${firstChange}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+
+  <div class="section">
+    <div class="section-title">首报与复报对比</div>
+    <div class="section-conclusion">${DATA.conclusions.repeat}</div>
+    <div id="chart-repeat" class="chart-container"></div>
+    <table class="data-table"><thead><tr><th>季度</th><th>首报人数</th><th>首报占比</th><th>复报人数</th><th>复报占比</th></tr></thead><tbody>`;
+  DATA.repeat_history.forEach(r => {
+    html += `<tr><td>${r.time}</td><td>${r.first_count}</td><td>${pct(r.first_ratio)}</td><td>${r.repeat_count}</td><td>${pct(r.repeat_ratio)}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+
+  <div class="section">
+    <div class="section-title">学员分层对比</div>
+    <div class="section-conclusion">${DATA.conclusions.tier}</div>
+    <div id="chart-tier" class="chart-container"></div>
+    <table class="data-table"><thead><tr><th>分层</th><th>池内人数</th><th>报名人数</th><th>本次报考率</th><th>上期报考率</th><th>环比</th></tr></thead><tbody>`;
+  const tierRates = DATA.tier_stats.map(t => t.rate);
+  const maxTierR = Math.max(...tierRates), minTierR = Math.min(...tierRates);
+  DATA.tier_stats.forEach(t => {
+    const chg = t.rate - t.last_rate;
+    const arrow = chg >= 0 ? "▲" : "▼";
+    const chgStr = arrow + " " + Math.abs(chg * 100).toFixed(2) + "%";
+    const rateStyle = t.rate === maxTierR ? 'color:#10b981;font-weight:600' : (t.rate === minTierR ? 'color:#ef4444;font-weight:600' : '');
+    html += `<tr><td>${t.tier}</td><td>${num(t.pool_count)}</td><td>${t.reg_count}</td><td style="${rateStyle}">${pct(t.rate,2)}</td><td>${pct(t.last_rate,2)}</td><td class="${changeClass(chg)}">${chgStr}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">阶段分布</div>
+      <div class="section-conclusion">${DATA.conclusions.stage}</div>
+      <div id="chart-stage" class="chart-container-sm"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">满级学员报名情况</div>
+      <div class="section-conclusion">${DATA.conclusions.mj}</div>
+      <table class="data-table"><thead><tr><th>学区</th><th>满级人数</th><th>已报名</th><th>报名率</th></tr></thead><tbody>`;
+  const mjRates = DATA.mj_by_district.filter(m => m.total > 0).map(m => m.rate);
+  const maxMjR = Math.max(...mjRates), minMjR = Math.min(...mjRates);
+  DATA.mj_by_district.forEach(m => {
+    const rateStyle = m.total > 0 ? (m.rate === maxMjR ? 'color:#10b981;font-weight:600' : (m.rate === minMjR ? 'color:#ef4444;font-weight:600' : '')) : '';
+    html += `<tr><td>${m.district}</td><td>${m.total}</td><td>${m.reg}</td><td style="${rateStyle}">${pct(m.rate,2)}</td></tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+
+  // 荣誉榜
+  html += `<div class="section">
+    <div class="section-title">🏆 荣誉榜</div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:14px;font-weight:600;color:#f59e0b;margin-bottom:10px">▎个人 TOP10（报名人数）</div>
+      <table class="data-table"><thead><tr><th>排名</th><th>艺名</th><th>报名人数</th><th>学区</th></tr></thead><tbody>`;
+  const rankIcons = ["🥇","🥈","🥉"];
+  const rankBg = ["rgba(255,215,0,0.1)","rgba(192,192,192,0.1)","rgba(205,127,50,0.1)"];
+  DATA.honor.teachers.forEach(t => {
+    const icon = t.rank <= 3 ? rankIcons[t.rank-1] : t.rank;
+    const bg = t.rank <= 3 ? `background:${rankBg[t.rank-1]}` : '';
+    html += `<tr style="${bg}"><td>${icon}</td><td style="font-weight:${t.rank<=3?'600':'400'}">${t.name}</td><td>${t.reg_count}人</td><td>${t.district}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+    <div class="grid-2">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#f59e0b;margin-bottom:10px">▎团队 TOP4（完成率）</div>
+        <table class="data-table"><thead><tr><th>排名</th><th>团队名</th><th>完成率</th><th>学区</th></tr></thead><tbody>`;
+  DATA.honor.teams.forEach(t => {
+    const icon = t.rank <= 3 ? rankIcons[t.rank-1] : t.rank;
+    const bg = t.rank <= 3 ? `background:${rankBg[t.rank-1]}` : '';
+    html += `<tr style="${bg}"><td>${icon}</td><td style="font-weight:${t.rank<=3?'600':'400'}">${t.name}</td><td class="text-green">${pct(t.completion_rate)}</td><td>${t.district}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#f59e0b;margin-bottom:10px">▎小组 TOP5（完成率）</div>
+        <table class="data-table"><thead><tr><th>排名</th><th>小组名</th><th>完成率</th><th>学区</th></tr></thead><tbody>`;
+  DATA.honor.groups.forEach(g => {
+    const icon = g.rank <= 3 ? rankIcons[g.rank-1] : g.rank;
+    const bg = g.rank <= 3 ? `background:${rankBg[g.rank-1]}` : '';
+    html += `<tr style="${bg}"><td>${icon}</td><td style="font-weight:${g.rank<=3?'600':'400'}">${g.name}</td><td class="text-green">${pct(g.completion_rate)}</td><td>${g.district}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+    </div>
+  </div>`;
+
+  // 科目级别报名排名（放最底部）
+  html += `<div class="section">
+    <div class="section-title">科目级别报名排名（本期 vs 上期）</div>
+    <div id="chart-subject-level-rank" class="chart-container"></div>
+    <table class="data-table"><thead><tr><th>排名</th><th>科目级别</th><th>本期人数</th><th>上期人数</th><th>变化</th><th>变化率</th></tr></thead><tbody>`;
+  DATA.subject_level_ranking.forEach((s, i) => {
+    const chgClass = s.change >= 0 ? 'text-green' : 'text-red';
+    const chgStr = s.change >= 0 ? '+' + s.change : s.change;
+    const rateStr = s.last > 0 ? (s.change_rate >= 0 ? '+' : '') + (s.change_rate * 100).toFixed(1) + '%' : '-';
+    const boldStyle = Math.abs(s.change_rate) >= 0.2 ? 'font-weight:700' : '';
+    html += `<tr style="${boldStyle}"><td>${i+1}</td><td>${s.name}</td><td>${s.current}</td><td>${s.last||'-'}</td><td class="${chgClass}">${chgStr}</td><td class="${chgClass}">${rateStr}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  document.getElementById("page-overview").innerHTML = html;
+
+  // 渲染图表
+  setTimeout(() => {
+    renderHistoryChart();
+    renderDailyChart();
+    renderRegionChart();
+    renderRegionPie();
+    renderSubjectChart();
+    renderSubjectLevelRankChart();
+    renderRepeatChart();
+    renderTierChart();
+    renderStageChart();
+  }, 100);
+}
+
+function renderHistoryChart() {
+  const chart = echarts.init(document.getElementById("chart-history"));
+  const times = DATA.history.map(h => h.time);
+  const regCounts = DATA.history.map(h => h.reg_count);
+  const rates = DATA.history.map(h => h.reg_rate);
+  const compRates = DATA.history.map(h => h.completion_rate);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["报名人数", "报考率", "目标完成率"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 60, right: 60, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: times, axisLabel: { color: "#94a3b8" }, axisLine: { lineStyle: { color: "#2a3444" } } },
+    yAxis: [
+      { type: "value", name: "人数", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+      { type: "value", name: "比率", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: "报名人数", type: "bar", data: regCounts, itemStyle: { color: "#3b82f6" }, barWidth: 30, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 10 } },
+      { name: "报考率", type: "line", yAxisIndex: 1, data: rates, itemStyle: { color: "#10b981" }, smooth: true, label: { show: true, color: "#10b981", fontSize: 10, formatter: p => pct(p.value) } },
+      { name: "目标完成率", type: "line", yAxisIndex: 1, data: compRates, itemStyle: { color: "#f59e0b" }, smooth: true }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderDailyChart() {
+  const chart = echarts.init(document.getElementById("chart-daily"));
+  const labels = DATA.mtd.map(m => m.label);
+  const cumTargets = DATA.mtd.map(m => m.cum_target);
+  // 匹配实际数据到MTD日期
+  const actualCum = DATA.mtd.map(m => {
+    const idx = DATA.daily.dates.findIndex(d => d === m.date.split(" ")[0]);
+    if (idx >= 0) return DATA.daily.cumulative[idx];
+    // 尝试匹配
+    const dateStr = m.date;
+    for (let i = 0; i < DATA.daily.dates.length; i++) {
+      if (DATA.daily.dates[i] === dateStr) return DATA.daily.cumulative[i];
+    }
+    return null;
+  });
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["实际累计", "MTD目标"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 60, right: 30, bottom: 50, top: 40 },
+    xAxis: { type: "category", data: labels, axisLabel: { color: "#94a3b8", interval: 0, fontSize: 11 } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "实际累计", type: "line", data: actualCum, itemStyle: { color: "#3b82f6" }, smooth: true, label: { show: true, color: "#3b82f6", fontSize: 10 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{offset:0,color:"rgba(59,130,246,0.3)"},{offset:1,color:"rgba(59,130,246,0)"}] } } },
+      { name: "MTD目标", type: "line", data: cumTargets, itemStyle: { color: "#f59e0b" }, lineStyle: { type: "dashed" }, smooth: true }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderRegionChart() {
+  const chart = echarts.init(document.getElementById("chart-region"));
+  const r = DATA.region;
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["报名率", "上期报考率"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 60, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: ["国内", "海外"], axisLabel: { color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "报名率", type: "bar", data: [r.domestic.rate, r.overseas.rate], itemStyle: { color: "#3b82f6" }, barWidth: 40, label: { show: true, position: "top", color: "#e2e8f0", formatter: p => (p.value*100).toFixed(2)+"%" } },
+      { name: "上期报考率", type: "bar", data: [r.domestic.last_rate, r.overseas.last_rate], itemStyle: { color: "#64748b" }, barWidth: 40, label: { show: true, position: "top", color: "#94a3b8", formatter: p => (p.value*100).toFixed(2)+"%" } }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderRegionPie() {
+  const chart = echarts.init(document.getElementById("chart-region-pie"));
+  const r = DATA.region;
+  const total = r.domestic.reg + r.overseas.reg;
+  chart.setOption({
+    tooltip: { trigger: "item" },
+    series: [{
+      type: "pie", radius: ["40%", "70%"], center: ["50%", "55%"],
+      data: [
+        { value: r.domestic.reg, name: "国内 " + r.domestic.reg + "人", itemStyle: { color: "#3b82f6" } },
+        { value: r.overseas.reg, name: "海外 " + r.overseas.reg + "人", itemStyle: { color: "#06b6d4" } }
+      ],
+      label: { color: "#e2e8f0", fontSize: 13, formatter: p => p.name + "\n" + (p.value/total*100).toFixed(1) + "%" }
+    }]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderSubjectChart() {
+  const chart = echarts.init(document.getElementById("chart-subject"));
+  const names = DATA.subject_stats.map(s => s['考试科目名称']);
+  const firstCounts = names.map(n => (DATA.subject_first_stats[n] || {}).first || 0);
+  const repeatCounts = names.map(n => (DATA.subject_first_stats[n] || {}).repeat || 0);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["首报", "复报"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 60, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: names, axisLabel: { color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "首报", type: "bar", stack: "total", data: firstCounts, itemStyle: { color: "#06b6d4" }, barWidth: 40, label: { show: true, position: "inside", color: "#fff", fontSize: 11 } },
+      { name: "复报", type: "bar", stack: "total", data: repeatCounts, itemStyle: { color: "#3b82f6" }, barWidth: 40, label: { show: true, position: "inside", color: "#fff", fontSize: 11 } }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderSubjectLevelRankChart() {
+  const el = document.getElementById("chart-subject-level-rank");
+  if (!el) return;
+  const chart = echarts.init(el);
+  const top15 = DATA.subject_level_ranking.slice(0, 15);
+  const names = top15.map(s => s.name);
+  const currents = top15.map(s => s.current);
+  const lasts = top15.map(s => s.last);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本期", "上期"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 80, right: 30, bottom: 60, top: 40 },
+    xAxis: { type: "category", data: names, axisLabel: { color: "#94a3b8", fontSize: 10, rotate: 45 } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本期", type: "bar", data: currents, itemStyle: { color: "#3b82f6" }, barWidth: 14, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 10 } },
+      { name: "上期", type: "bar", data: lasts, itemStyle: { color: "#64748b" }, barWidth: 14, label: { show: true, position: "top", color: "#94a3b8", fontSize: 10 } }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderRepeatChart() {
+  const chart = echarts.init(document.getElementById("chart-repeat"));
+  const times = DATA.repeat_history.map(r => r.time);
+  const firstCounts = DATA.repeat_history.map(r => r.first_count);
+  const repeatCounts = DATA.repeat_history.map(r => r.repeat_count);
+  const firstRatios = DATA.repeat_history.map(r => r.first_ratio);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["首报", "复报", "首报占比"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 60, right: 60, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: times, axisLabel: { color: "#94a3b8", fontSize: 11 } },
+    yAxis: [
+      { type: "value", name: "人数", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+      { type: "value", name: "占比", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: "首报", type: "bar", stack: "total", data: firstCounts, itemStyle: { color: "#06b6d4" }, label: { show: true, position: "inside", color: "#fff", fontSize: 10 } },
+      { name: "复报", type: "bar", stack: "total", data: repeatCounts, itemStyle: { color: "#3b82f6" }, label: { show: true, position: "inside", color: "#fff", fontSize: 10 } },
+      { name: "首报占比", type: "line", yAxisIndex: 1, data: firstRatios, itemStyle: { color: "#f59e0b" }, smooth: true }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderTierChart() {
+  const chart = echarts.init(document.getElementById("chart-tier"));
+  const tiers = DATA.tier_stats.map(t => t.tier);
+  const pools = DATA.tier_stats.map(t => t.pool_count);
+  const regs = DATA.tier_stats.map(t => t.reg_count);
+  const rates = DATA.tier_stats.map(t => t.rate);
+  const lastRates = DATA.tier_stats.map(t => t.last_rate);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["池内人数", "报名人数", "本期报考率", "上期报考率"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 60, right: 60, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: tiers, axisLabel: { color: "#94a3b8" } },
+    yAxis: [
+      { type: "value", name: "人数", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+      { type: "value", name: "报考率", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: "池内人数", type: "bar", data: pools, itemStyle: { color: "#334155" }, barWidth: 25 },
+      { name: "报名人数", type: "bar", data: regs, itemStyle: { color: "#3b82f6" }, barWidth: 25, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 10 } },
+      { name: "本期报考率", type: "line", yAxisIndex: 1, data: rates, itemStyle: { color: "#10b981" }, smooth: true, label: { show: true, color: "#10b981", fontSize: 10, formatter: p => pct(p.value) } },
+      { name: "上期报考率", type: "line", yAxisIndex: 1, data: lastRates, itemStyle: { color: "#64748b" }, lineStyle: { type: "dashed" }, smooth: true }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+function renderStageChart() {
+  const chart = echarts.init(document.getElementById("chart-stage"));
+  const stages = DATA.stage_stats.map(s => s.stage);
+  const regs = DATA.stage_stats.map(s => s.reg_count);
+  const rates = DATA.stage_stats.map(s => s.rate);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["报名人数", "报名率"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 50, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: stages, axisLabel: { color: "#94a3b8", fontSize: 11 } },
+    yAxis: [
+      { type: "value", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+      { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: "报名人数", type: "bar", data: regs, itemStyle: { color: "#3b82f6" }, barWidth: 20, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 9 } },
+      { name: "报名率", type: "line", yAxisIndex: 1, data: rates, itemStyle: { color: "#10b981" }, smooth: true, label: { show: true, color: "#10b981", fontSize: 9, formatter: p => pct(p.value) } }
+    ]
+  });
+  window.addEventListener("resize", () => chart.resize());
+}
+
+// ====== 团队页面 ======
+function initTeamPage() {
+  const districts = ["教学一区", "教学二区", "教学三区", "C区", "DEMO特战队"];
+  let html = `<div class="district-tabs">`;
+  districts.forEach((d, i) => {
+    html += `<div class="district-tab ${i===0?'active':''}" onclick="switchDistrict('${d}', this)">${d}</div>`;
+  });
+  html += `</div><div id="district-content"></div>`;
+  document.getElementById("page-team").innerHTML = html;
+  renderDistrict(districts[0]);
+}
+
+function switchDistrict(name, el) {
+  document.querySelectorAll(".district-tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  renderDistrict(name);
+}
+
+function renderDistrict(name) {
+  const d = DATA.team_page[name];
+  if (!d) { document.getElementById("district-content").innerHTML = "<p>暂无数据</p>"; return; }
+  const bm = DATA.benchmarks;
+  const kpi = d.kpi || {};
+  let html = `
+  <div class="section"><div class="section-conclusion">${d.conclusion}</div></div>
+
+  <div class="district-kpi">
+    <div class="district-kpi-card"><div class="district-kpi-label">报名人数</div><div class="district-kpi-value" style="color:#10b981;font-weight:700">${num(kpi.reg_count)}</div></div>
+    <div class="district-kpi-card"><div class="district-kpi-label">目标人数</div><div class="district-kpi-value">${num(kpi.target)}</div></div>
+    <div class="district-kpi-card"><div class="district-kpi-label">完成率</div><div class="district-kpi-value" style="color:${kpiColor(kpi.completion_rate)}">${kpi.completion_rate}%</div><div class="district-kpi-rank">排名 ${kpi.rank}/${kpi.total_districts}</div></div>
+    <div class="district-kpi-card"><div class="district-kpi-label">报名率</div><div class="district-kpi-value">${kpi.reg_rate}%</div><div class="district-kpi-rank">排名 ${kpi.rank}/${kpi.total_districts}</div></div>
+    <div class="district-kpi-card"><div class="district-kpi-label">池内人数</div><div class="district-kpi-value">${num(kpi.pool_count)}</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">团队报名排名（按完成率）</div>
+      <div id="chart-team-rank" class="chart-container-sm"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">小组报名排名（按完成率）</div>
+      <div id="chart-group-rank" class="chart-container-sm"></div>
+    </div>
+  </div>`;
+
+  // TOP3
+  if (d.teachers_top3.length > 0) {
+    html += `<div class="top3">`;
+    const ranks = ["🥇", "🥈", "🥉"];
+    d.teachers_top3.forEach((t, i) => {
+      html += `<div class="top3-item"><span class="top3-rank">${ranks[i]}</span><span class="top3-name">${t.name}</span><div class="top3-stats">${t.reg_count}人 / 目标${t.target}人 / 完成率${pct(t.completion_rate)}</div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `
+  <div class="section">
+    <div class="section-title">科目级别报名占比（学区 vs 大盘）</div>
+    <div id="chart-district-subject" class="chart-container"></div>
+  </div>
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">阶段报名率（学区 vs 大盘）</div>
+      <div id="chart-district-stage" class="chart-container-sm"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">国内/海外报名率（学区 vs 大盘）</div>
+      <div id="chart-district-region" class="chart-container-sm"></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-title">学员分层报名率（学区 vs 大盘）</div>
+      <div id="chart-district-tier" class="chart-container-sm"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">满级学员报名率（学区 vs 大盘）</div>
+      <div id="chart-district-mj" class="chart-container-sm"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">首报/复报报名率（学区 vs 大盘）</div>
+    <div id="chart-district-fr" class="chart-container-sm"></div>
+  </div>`;
+
+  document.getElementById("district-content").innerHTML = html;
+
+  setTimeout(() => {
+    renderTeamRank(d);
+    renderGroupRank(d);
+    renderDistrictSubject(d, bm);
+    renderDistrictStage(d, bm);
+    renderDistrictRegion(d, bm);
+    renderDistrictTier(d, bm);
+    renderDistrictMJ(d, bm);
+    renderDistrictFR(d, bm);
+  }, 100);
+}
+
+function renderTeamRank(d) {
+  const el = document.getElementById("chart-team-rank");
+  if (!el || d.teams.length === 0) return;
+  const chart = echarts.init(el);
+  const names = d.teams.map(t => t.name).reverse();
+  const rates = d.teams.map(t => t.completion_rate).reverse();
+  chart.setOption({
+    tooltip: { trigger: "axis", formatter: p => p[0].name + ": " + pct(p[0].value) },
+    grid: { left: 100, right: 60, bottom: 20, top: 10 },
+    xAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    yAxis: { type: "category", data: names, axisLabel: { color: "#94a3b8", fontSize: 11 } },
+    series: [{ type: "bar", data: rates, itemStyle: { color: "#3b82f6" }, barWidth: 18, label: { show: true, position: "right", color: "#e2e8f0", fontSize: 10, formatter: p => pct(p.value) } }]
+  });
+}
+
+function renderGroupRank(d) {
+  const el = document.getElementById("chart-group-rank");
+  if (!el || d.groups.length === 0) return;
+  const chart = echarts.init(el);
+  const top10 = d.groups.slice(0, 10);
+  const names = top10.map(g => g.name).reverse();
+  const rates = top10.map(g => g.completion_rate).reverse();
+  chart.setOption({
+    tooltip: { trigger: "axis", formatter: p => p[0].name + ": " + pct(p[0].value) },
+    grid: { left: 100, right: 60, bottom: 20, top: 10 },
+    xAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    yAxis: { type: "category", data: names, axisLabel: { color: "#94a3b8", fontSize: 11 } },
+    series: [{ type: "bar", data: rates, itemStyle: { color: "#06b6d4" }, barWidth: 18, label: { show: true, position: "right", color: "#e2e8f0", fontSize: 10, formatter: p => pct(p.value) } }]
+  });
+}
+
+function renderDistrictSubject(d, bm) {
+  const el = document.getElementById("chart-district-subject");
+  if (!el || !d.subject_level || d.subject_level.length === 0) return;
+  const chart = echarts.init(el);
+  const top15 = d.subject_level.sort((a,b) => b['占比'] - a['占比']).slice(0, 15);
+  const names = top15.map(s => s['科目级别']);
+  const districtRatios = top15.map(s => s['占比']);
+  const benchRatios = names.map(n => bm.subject_level[n] || 0);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本学区", "大盘"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 30, bottom: 60, top: 40 },
+    xAxis: { type: "category", data: names, axisLabel: { color: "#94a3b8", fontSize: 10, rotate: 45 } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本学区", type: "bar", data: districtRatios, itemStyle: { color: "#3b82f6" }, barWidth: 12, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 9, formatter: p => pct(p.value) } },
+      { name: "大盘", type: "bar", data: benchRatios, itemStyle: { color: "#64748b" }, barWidth: 12 }
+    ]
+  });
+}
+
+function renderDistrictStage(d, bm) {
+  const el = document.getElementById("chart-district-stage");
+  if (!el) return;
+  const chart = echarts.init(el);
+  const stages = d.stages.map(s => s.stage);
+  const districtRates = d.stages.map(s => s.rate);
+  const benchRates = stages.map(s => bm.stages[s] || 0);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本学区", "大盘"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: stages, axisLabel: { color: "#94a3b8", fontSize: 11 } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本学区", type: "bar", data: districtRates, itemStyle: { color: "#3b82f6" }, barWidth: 14, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 9, formatter: p => pct(p.value) } },
+      { name: "大盘", type: "bar", data: benchRates, itemStyle: { color: "#64748b" }, barWidth: 14 }
+    ]
+  });
+}
+
+function renderDistrictRegion(d, bm) {
+  const el = document.getElementById("chart-district-region");
+  if (!el) return;
+  const chart = echarts.init(el);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本学区", "大盘"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: ["国内", "海外"], axisLabel: { color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本学区", type: "bar", data: [d.region.domestic.rate, d.region.overseas.rate], itemStyle: { color: "#3b82f6" }, barWidth: 30, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 11, formatter: p => (p.value*100).toFixed(2)+"%" } },
+      { name: "大盘", type: "bar", data: [bm.region.domestic, bm.region.overseas], itemStyle: { color: "#64748b" }, barWidth: 30, label: { show: true, position: "top", color: "#94a3b8", fontSize: 11, formatter: p => (p.value*100).toFixed(2)+"%" } }
+    ]
+  });
+}
+
+function renderDistrictTier(d, bm) {
+  const el = document.getElementById("chart-district-tier");
+  if (!el) return;
+  const chart = echarts.init(el);
+  const tiers = d.tiers.map(t => t.tier);
+  const districtRates = d.tiers.map(t => t.rate);
+  const benchRates = tiers.map(t => bm.tiers[t] || 0);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本学区", "大盘"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: tiers, axisLabel: { color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本学区", type: "bar", data: districtRates, itemStyle: { color: "#3b82f6" }, barWidth: 25, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 10, formatter: p => pct(p.value) } },
+      { name: "大盘", type: "bar", data: benchRates, itemStyle: { color: "#64748b" }, barWidth: 25 }
+    ]
+  });
+}
+
+function renderDistrictMJ(d, bm) {
+  const el = document.getElementById("chart-district-mj");
+  if (!el) return;
+  const chart = echarts.init(el);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本学区", "大盘"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: ["满级", "非满级"], axisLabel: { color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本学区", type: "bar", data: [d.mj.mj_rate, d.mj.non_mj_rate], itemStyle: { color: "#3b82f6" }, barWidth: 30, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 11, formatter: p => pct(p.value) } },
+      { name: "大盘", type: "bar", data: [bm.mj_rate, bm.non_mj_rate], itemStyle: { color: "#64748b" }, barWidth: 30, label: { show: true, position: "top", color: "#94a3b8", fontSize: 11, formatter: p => pct(p.value) } }
+    ]
+  });
+}
+
+function renderDistrictFR(d, bm) {
+  const el = document.getElementById("chart-district-fr");
+  if (!el) return;
+  const chart = echarts.init(el);
+  chart.setOption({
+    tooltip: { trigger: "axis" },
+    legend: { data: ["本学区", "大盘"], textStyle: { color: "#94a3b8" }, top: 0 },
+    grid: { left: 50, right: 30, bottom: 30, top: 40 },
+    xAxis: { type: "category", data: ["首报", "复报"], axisLabel: { color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { color: "#94a3b8", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#1e2a3a" } } },
+    series: [
+      { name: "本学区", type: "bar", data: [d.first_repeat.first.rate, d.first_repeat.repeat.rate], itemStyle: { color: "#3b82f6" }, barWidth: 30, label: { show: true, position: "top", color: "#e2e8f0", fontSize: 11, formatter: p => pct(p.value) } },
+      { name: "大盘", type: "bar", data: [bm.first_rate, bm.repeat_rate], itemStyle: { color: "#64748b" }, barWidth: 30, label: { show: true, position: "top", color: "#94a3b8", fontSize: 11, formatter: p => pct(p.value) } }
+    ]
+  });
+}
+</script>
+</body>
+</html>
