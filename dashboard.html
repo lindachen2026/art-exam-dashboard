@@ -96,7 +96,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
       <div class="nav-tab" onclick="switchPage('team')">团队</div>
     </div>
     <div class="nav-right" style="display:flex;align-items:center">
-      <span style="font-size:12px;color:#64748b">更新时间：2026-06-11 12:26</span>
+      <span style="font-size:12px;color:#64748b">更新时间：2026-06-11 12:29</span>
     </div>
   </div>
 </nav>
@@ -657,17 +657,17 @@ function renderDistrict(name) {
   <div class="section">
     <div class="section-title">科目级别报名占比（学区 vs 大盘）</div>
     <div id="chart-district-subject" class="chart-container"></div>
-    <table class="data-table"><thead><tr><th>科目级别</th><th>报名人数</th><th>学区占比</th><th>大盘占比</th><th>差异</th></tr></thead><tbody>`;
+    <table class="data-table"><thead><tr><th>排名</th><th>科目级别</th><th>报名人数</th><th>学区占比</th><th>大盘占比</th><th>差异</th></tr></thead><tbody>`;
   const slSorted = (d.subject_level || []).sort((a,b) => b['报名人数'] - a['报名人数']);
   const slRatios = slSorted.map(s => s['占比']);
   const maxSlR = slRatios.length > 0 ? Math.max(...slRatios) : 0;
   const minSlR = slRatios.length > 0 ? Math.min(...slRatios) : 0;
-  slSorted.forEach(s => {
+  slSorted.forEach((s, idx) => {
     const bmVal = bm.subject_level[s['科目级别']] || 0;
     const diff = s['占比'] - bmVal;
     const diffClass = diff >= 0 ? 'text-green' : 'text-red';
     const ratioStyle = s['占比'] === maxSlR ? 'color:#10b981;font-weight:600' : (s['占比'] === minSlR ? 'color:#ef4444;font-weight:600' : '');
-    html += `<tr><td>${s['科目级别']}</td><td>${s['报名人数']}</td><td style="${ratioStyle}">${pct(s['占比'],2)}</td><td>${pct(bmVal,2)}</td><td class="${diffClass}">${(diff>=0?'+':'')+(diff*100).toFixed(2)}%</td></tr>`;
+    html += `<tr><td>${idx+1}</td><td>${s['科目级别']}</td><td>${s['报名人数']}</td><td style="${ratioStyle}">${pct(s['占比'],2)}</td><td>${pct(bmVal,2)}</td><td class="${diffClass}">${(diff>=0?'+':'')+(diff*100).toFixed(2)}%</td></tr>`;
   });
   html += `</tbody></table></div>`;
 
