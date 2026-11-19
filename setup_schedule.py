@@ -51,7 +51,7 @@ print(f"  报名结束日期: {date_end}")
 print(f"  每日播报时间: {', '.join(time_points)}")
 
 try:
-    dt_end   = datetime.strptime(date_end, "%Y-%m-%d")
+    dt_end   = datetime.strptime(date_end.split()[0], "%Y-%m-%d")
     dt_next  = dt_end + timedelta(days=1)
     ed_param = dt_end.strftime("%m/%d/%Y")     # schtasks /ED 格式
     sd_next  = dt_next.strftime("%m/%d/%Y")    # 次日日期

@@ -286,10 +286,12 @@ for d in districts:
     target = district_targets.get(d, {}).get('target', 0)
     rate = reg_count / pool_count if pool_count > 0 else 0
     comp_rate = reg_count / target if target > 0 else 0
-    # 国内海外
+    # 中国大陆 / 中国港澳台 / 海外
     domestic = pool[pool['地区'] == '国内']
-    overseas = pool[pool['地区'] != '国内']
+    hkmotw = pool[pool['地区'] == '港澳台']
+    overseas = pool[~pool['地区'].isin(['国内', '港澳台'])]
     dom_reg = domestic['是否本期报名'].sum()
+    hkm_reg = hkmotw['是否本期报名'].sum()
     ovs_reg = overseas['是否本期报名'].sum()
     district_stats.append({
         'district': d,
@@ -299,6 +301,7 @@ for d in districts:
         'completion_rate': comp_rate,
         'reg_rate': rate,
         'domestic_reg': int(dom_reg),
+        'hkmotw_reg': int(hkm_reg),
         'overseas_reg': int(ovs_reg)
     })
 
@@ -315,7 +318,8 @@ unattributed_ids = all_reg_ids - attributed_ids
 df_reg_unattributed = df_reg[df_reg['用户id'].isin(unattributed_ids)]
 unattr_reg_count = df_reg_unattributed['用户id'].nunique()
 unattr_dom = df_reg_unattributed[df_reg_unattributed['学员地区'] == '国内']['用户id'].nunique()
-unattr_ovs = df_reg_unattributed[df_reg_unattributed['学员地区'] != '国内']['用户id'].nunique()
+unattr_hkm = df_reg_unattributed[df_reg_unattributed['学员地区'] == '港澳台']['用户id'].nunique()
+unattr_ovs = df_reg_unattributed[~df_reg_unattributed['学员地区'].isin(['国内', '港澳台'])]['用户id'].nunique()
 
 district_stats.append({
     'district': '无归属',
@@ -325,6 +329,7 @@ district_stats.append({
     'completion_rate': 0,
     'reg_rate': 0,
     'domestic_reg': int(unattr_dom),
+    'hkmotw_reg': int(unattr_hkm),
     'overseas_reg': int(unattr_ovs)
 })
 
@@ -340,29 +345,39 @@ district_summary = {
     'completion_rate': 0,
     'reg_rate': 0,
     'domestic_reg': sum(d['domestic_reg'] for d in district_stats if d['district'] != '无归属'),
+    'hkmotw_reg': sum(d['hkmotw_reg'] for d in district_stats if d['district'] != '无归属'),
     'overseas_reg': sum(d['overseas_reg'] for d in district_stats if d['district'] != '无归属')
 }
 district_summary['completion_rate'] = district_summary['reg_count'] / district_summary['target'] if district_summary['target'] > 0 else 0
 district_summary['reg_rate'] = district_summary['reg_count'] / district_summary['pool_count'] if district_summary['pool_count'] > 0 else 0
 
-# 2.6 国内/海外统计
+# 2.6 中国大陆/中国港澳台/海外统计
 domestic_pool = df_follow[df_follow['地区'] == '国内']
-overseas_pool = df_follow[df_follow['地区'] != '国内']
+hkmotw_pool = df_follow[df_follow['地区'] == '港澳台']
+overseas_pool = df_follow[~df_follow['地区'].isin(['国内', '港澳台'])]
 domestic_reg_count = domestic_pool['是否本期报名'].sum()
+hkmotw_reg_count = hkmotw_pool['是否本期报名'].sum()
 overseas_reg_count = overseas_pool['是否本期报名'].sum()
 domestic_rate = domestic_reg_count / len(domestic_pool) if len(domestic_pool) > 0 else 0
+hkmotw_rate = hkmotw_reg_count / len(hkmotw_pool) if len(hkmotw_pool) > 0 else 0
 overseas_rate = overseas_reg_count / len(overseas_pool) if len(overseas_pool) > 0 else 0
 
-# 国内海外课时
+# 中国大陆/港澳台/海外课时
 df_reg_with_region = df_reg.copy()
 domestic_hours = df_reg_with_region[df_reg_with_region['学员地区'] == '国内']['课时'].sum()
-overseas_hours = df_reg_with_region[df_reg_with_region['学员地区'] != '国内']['课时'].sum()
+hkmotw_hours = df_reg_with_region[df_reg_with_region['学员地区'] == '港澳台']['课时'].sum()
+overseas_hours = df_reg_with_region[~df_reg_with_region['学员地区'].isin(['国内', '港澳台'])]['课时'].sum()
 
 region_data = {
     'domestic': {
         'pool': len(domestic_pool), 'reg': int(domestic_reg_count),
         'rate': domestic_rate, 'hours': int(domestic_hours),
         'last_rate': float(df_history_region.iloc[1]['上期报考率']) if pd.notna(df_history_region.iloc[1]['上期报考率']) else 0
+    },
+    'hkmotw': {
+        'pool': len(hkmotw_pool), 'reg': int(hkmotw_reg_count),
+        'rate': hkmotw_rate, 'hours': int(hkmotw_hours),
+        'last_rate': None
     },
     'overseas': {
         'pool': len(overseas_pool), 'reg': int(overseas_reg_count),
@@ -442,7 +457,7 @@ subject_level_ranking.sort(key=lambda x: x['current'], reverse=True)
 
 # 2.9 学员分层统计
 tier_stats = []
-for tier in ['A层', 'B层', 'C层', 'D层']:
+for tier in ['A层', 'B层', 'C层', 'D层', 'E层']:
     pool = df_follow[df_follow['分层'] == tier]
     pool_count = len(pool)
     reg_count = pool['是否本期报名'].sum()
@@ -458,7 +473,7 @@ for tier in ['A层', 'B层', 'C层', 'D层']:
 tier_history_map = {}
 for _, row in df_history_tier.iterrows():
     t = str(row.iloc[0]).strip()
-    if t in ['A层', 'B层', 'C层', 'D层', '总计']:
+    if t in ['A层', 'B层', 'C层', 'D层', 'E层', '总计']:
         tier_history_map[t] = {
             'last_rate': float(row.iloc[5]) if pd.notna(row.iloc[5]) else 0,
             'last_target': int(row.iloc[7]) if pd.notna(row.iloc[7]) else 0,
@@ -466,9 +481,15 @@ for _, row in df_history_tier.iterrows():
         }
 
 for ts in tier_stats:
-    hist = tier_history_map.get(ts['tier'], {})
-    ts['last_rate'] = hist.get('last_rate', 0)
-    ts['rate_change'] = ts['rate'] - ts['last_rate']
+    # 本期新增分层（如E层）无往期数据，环比留空
+    if ts['tier'] in tier_history_map:
+        ts['last_rate'] = tier_history_map[ts['tier']]['last_rate']
+        ts['rate_change'] = ts['rate'] - ts['last_rate']
+        ts['has_history'] = True
+    else:
+        ts['last_rate'] = None
+        ts['rate_change'] = None
+        ts['has_history'] = False
 
 # 2.10 阶段分布
 stage_order = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', '高阶', '院派', '大师', '不在班']
@@ -728,19 +749,22 @@ def get_team_data(district_name):
         stage_district.append({'stage': stage, 'pool_count': pc, 'reg_count': int(rc), 'rate': rate})
     result['stages'] = stage_district
 
-    # 国内/海外报名率（本学区）
+    # 中国大陆/中国港澳台/海外报名率（本学区）
     dom = pool[pool['地区'] == '国内']
-    ovs = pool[pool['地区'] != '国内']
+    hkm = pool[pool['地区'] == '港澳台']
+    ovs = pool[~pool['地区'].isin(['国内', '港澳台'])]
     result['region'] = {
         'domestic': {'pool': len(dom), 'reg': int(dom['是否本期报名'].sum()),
                      'rate': dom['是否本期报名'].sum() / len(dom) if len(dom) > 0 else 0},
+        'hkmotw': {'pool': len(hkm), 'reg': int(hkm['是否本期报名'].sum()),
+                   'rate': hkm['是否本期报名'].sum() / len(hkm) if len(hkm) > 0 else 0},
         'overseas': {'pool': len(ovs), 'reg': int(ovs['是否本期报名'].sum()),
                      'rate': ovs['是否本期报名'].sum() / len(ovs) if len(ovs) > 0 else 0}
     }
 
     # 学员分层报名率（本学区）
     tier_district = []
-    for tier in ['A层', 'B层', 'C层', 'D层']:
+    for tier in ['A层', 'B层', 'C层', 'D层', 'E层']:
         tp = pool[pool['分层'] == tier]
         pc = len(tp)
         rc = tp['是否本期报名'].sum()
@@ -776,7 +800,7 @@ def get_team_data(district_name):
 # 大盘数据（用于对比）
 overall_benchmarks = {
     'stages': {s['stage']: s['rate'] for s in stage_stats},
-    'region': {'domestic': domestic_rate, 'overseas': overseas_rate},
+    'region': {'domestic': domestic_rate, 'hkmotw': hkmotw_rate, 'overseas': overseas_rate},
     'tiers': {t['tier']: t['rate'] for t in tier_stats},
     'mj': {'mj_rate': mj_rate, 'non_mj_rate': (total_reg_count - mj_reg) / (pool_total - mj_total) if (pool_total - mj_total) > 0 else 0},
     'first_repeat': {
@@ -925,10 +949,10 @@ def gen_district_conclusion():
     return f"完成率最高：{best['district']} {best['completion_rate']*100:.1f}%；最低：{worst['district']} {worst['completion_rate']*100:.1f}%。整体完成率{completion_rate*100:.1f}%。"
 
 def gen_region_conclusion():
-    """国内海外结论"""
+    """中国大陆/中国港澳台/海外结论"""
     dom_chg = region_data['domestic']['rate'] - region_data['domestic']['last_rate']
     ovs_chg = region_data['overseas']['rate'] - region_data['overseas']['last_rate']
-    return f"国内报名率{region_data['domestic']['rate']*100:.2f}%，环比上期{'上升' if dom_chg>=0 else '下降'}{abs(dom_chg)*100:.2f}个百分点；海外报名率{region_data['overseas']['rate']*100:.2f}%，环比上期{'上升' if ovs_chg>=0 else '下降'}{abs(ovs_chg)*100:.2f}个百分点。"
+    return f"中国大陆报名率{region_data['domestic']['rate']*100:.2f}%，环比上期{'上升' if dom_chg>=0 else '下降'}{abs(dom_chg)*100:.2f}个百分点；中国港澳台报名率{region_data['hkmotw']['rate']*100:.2f}%（本期新增细分）；海外报名率{region_data['overseas']['rate']*100:.2f}%，环比上期{'上升' if ovs_chg>=0 else '下降'}{abs(ovs_chg)*100:.2f}个百分点。"
 
 def gen_subject_conclusion():
     """科目汇总结论"""
@@ -941,8 +965,11 @@ def gen_tier_conclusion():
     """学员分层结论"""
     parts = []
     for ts in tier_stats:
-        chg_str = f"{'↑' if ts['rate_change']>=0 else '↓'}{abs(ts['rate_change'])*100:.2f}%"
-        parts.append(f"{ts['tier']}报考率{ts['rate']*100:.2f}%({chg_str})")
+        if ts.get('rate_change') is None:
+            parts.append(f"{ts['tier']}报考率{ts['rate']*100:.2f}%")
+        else:
+            chg_str = f"{'↑' if ts['rate_change']>=0 else '↓'}{abs(ts['rate_change'])*100:.2f}%"
+            parts.append(f"{ts['tier']}报考率{ts['rate']*100:.2f}%({chg_str})")
     return '；'.join(parts) + '。'
 
 def gen_stage_conclusion():
@@ -1051,7 +1078,7 @@ dashboard_data = {
     'team_page': {},
     'benchmarks': {
         'stages': {s['stage']: round(s['rate'], 4) for s in stage_stats},
-        'region': {'domestic': round(domestic_rate, 4), 'overseas': round(overseas_rate, 4)},
+        'region': {'domestic': round(domestic_rate, 4), 'hkmotw': round(hkmotw_rate, 4), 'overseas': round(overseas_rate, 4)},
         'tiers': {t['tier']: round(t['rate'], 4) for t in tier_stats},
         'mj_rate': round(mj_rate, 4),
         'non_mj_rate': round(overall_benchmarks['mj']['non_mj_rate'], 4),
@@ -1305,7 +1332,7 @@ function renderOverview() {
   <div class="section">
     <div class="section-title">学区完成情况</div>
     <div class="section-conclusion">${DATA.conclusions.district}</div>
-    <table class="data-table"><thead><tr><th>学区</th><th>目标</th><th>实际报名</th><th>完成率</th><th>报名率</th><th>国内</th><th>海外</th></tr></thead><tbody>`;
+    <table class="data-table"><thead><tr><th>学区</th><th>目标</th><th>实际报名</th><th>完成率</th><th>报名率</th><th>中国大陆</th><th>中国港澳台</th><th>海外</th></tr></thead><tbody>`;
   const districtRows = DATA.district_stats.filter(d => d.district !== '无归属');
   const compRatesArr = districtRows.map(d => d.completion_rate);
   const regRatesArr = districtRows.map(d => d.reg_rate);
@@ -1316,26 +1343,26 @@ function renderOverview() {
     const regRColor = d.reg_rate === maxRegR ? 'color:#059669;font-weight:700' : (d.reg_rate === minRegR ? 'color:#DC2626;font-weight:700' : '');
     const barW = Math.min(d.completion_rate * 100, 100);
     const barColor = d.completion_rate >= 1 ? 'rgba(5,150,105,0.12)' : 'rgba(37,99,235,0.10)';
-    html += `<tr><td>${d.district}</td><td>${d.target}</td><td>${d.reg_count}</td><td style="${compColor};position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:${barW}%;background:${barColor};border-radius:3px"></span><span style="position:relative">${pct(d.completion_rate)}</span></td><td style="${regRColor}">${pct(d.reg_rate)}</td><td>${d.domestic_reg}</td><td>${d.overseas_reg}</td></tr>`;
+    html += `<tr><td>${d.district}</td><td>${d.target}</td><td>${d.reg_count}</td><td style="${compColor};position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:${barW}%;background:${barColor};border-radius:3px"></span><span style="position:relative">${pct(d.completion_rate)}</span></td><td style="${regRColor}">${pct(d.reg_rate)}</td><td>${d.domestic_reg}</td><td>${d.hkmotw_reg}</td><td>${d.overseas_reg}</td></tr>`;
   });
   // 学区汇总行
   const ds = DATA.district_summary;
-  html += `<tr style="font-weight:700;background:#F8FAFC;border-top:2px solid #2563EB"><td>学区汇总</td><td>${ds.target}</td><td>${ds.reg_count}</td><td class="${ds.completion_rate>=1?'text-green':'text-yellow'}">${pct(ds.completion_rate)}</td><td>${pct(ds.reg_rate)}</td><td>${ds.domestic_reg}</td><td>${ds.overseas_reg}</td></tr>`;
+  html += `<tr style="font-weight:700;background:#F8FAFC;border-top:2px solid #2563EB"><td>学区汇总</td><td>${ds.target}</td><td>${ds.reg_count}</td><td class="${ds.completion_rate>=1?'text-green':'text-yellow'}">${pct(ds.completion_rate)}</td><td>${pct(ds.reg_rate)}</td><td>${ds.domestic_reg}</td><td>${ds.hkmotw_reg}</td><td>${ds.overseas_reg}</td></tr>`;
   // 无归属行
   const ua = DATA.district_stats.find(d => d.district === '无归属');
   if (ua) {
-    html += `<tr style="color:#64748B;border-top:1px dashed #CBD5E1"><td>无归属</td><td>-</td><td>${ua.reg_count}</td><td>-</td><td>-</td><td>${ua.domestic_reg}</td><td>${ua.overseas_reg}</td></tr>`;
+    html += `<tr style="color:#64748B;border-top:1px dashed #CBD5E1"><td>无归属</td><td>-</td><td>${ua.reg_count}</td><td>-</td><td>-</td><td>${ua.domestic_reg}</td><td>${ua.hkmotw_reg}</td><td>${ua.overseas_reg}</td></tr>`;
   }
   html += `</tbody></table></div>
 
   <div class="grid-2">
     <div class="section">
-      <div class="section-title">国内/海外对比</div>
+      <div class="section-title">中国大陆/中国港澳台/海外对比</div>
       <div class="section-conclusion">${DATA.conclusions.region}</div>
       <div id="chart-region" class="chart-container-sm"></div>
     </div>
     <div class="section">
-      <div class="section-title">国内/海外分布</div>
+      <div class="section-title">中国大陆/中国港澳台/海外分布</div>
       <div id="chart-region-pie" class="chart-container-sm"></div>
     </div>
   </div>
@@ -1381,11 +1408,16 @@ function renderOverview() {
   const tierRates = DATA.tier_stats.map(t => t.rate);
   const maxTierR = Math.max(...tierRates), minTierR = Math.min(...tierRates);
   DATA.tier_stats.forEach(t => {
-    const chg = t.rate - t.last_rate;
-    const arrow = chg >= 0 ? "▲" : "▼";
-    const chgStr = arrow + " " + Math.abs(chg * 100).toFixed(2) + "%";
     const rateStyle = t.rate === maxTierR ? 'color:#059669;font-weight:700' : (t.rate === minTierR ? 'color:#DC2626;font-weight:700' : '');
-    html += `<tr><td>${t.tier}</td><td>${num(t.pool_count)}</td><td>${t.reg_count}</td><td style="${rateStyle}">${pct(t.rate,2)}</td><td>${pct(t.last_rate,2)}</td><td class="${changeClass(chg)}">${chgStr}</td></tr>`;
+    const hasHistory = t.last_rate !== null && t.last_rate !== undefined && t.rate_change !== null && t.rate_change !== undefined;
+    if (hasHistory) {
+      const chg = t.rate_change;
+      const arrow = chg >= 0 ? "▲" : "▼";
+      const chgStr = arrow + " " + Math.abs(chg * 100).toFixed(2) + "%";
+      html += `<tr><td>${t.tier}</td><td>${num(t.pool_count)}</td><td>${t.reg_count}</td><td style="${rateStyle}">${pct(t.rate,2)}</td><td>${pct(t.last_rate,2)}</td><td class="${changeClass(chg)}">${chgStr}</td></tr>`;
+    } else {
+      html += `<tr><td>${t.tier}</td><td>${num(t.pool_count)}</td><td>${t.reg_count}</td><td style="${rateStyle}">${pct(t.rate,2)}</td><td>—</td><td style="color:#94A3B8">—</td></tr>`;
+    }
   });
   html += `</tbody></table></div>
 
@@ -1524,11 +1556,11 @@ function renderRegionChart() {
     tooltip: { trigger: "axis", formatter: tooltipFmt },
     legend: { data: ["报名率", "上期报考率"], textStyle: { color: "#475569", fontWeight: 500 }, top: 0 },
     grid: { left: 60, right: 30, bottom: 30, top: 40 },
-    xAxis: { type: "category", data: ["国内", "海外"], axisLabel: { color: "#475569" }, axisLine: { lineStyle: { color: "#CBD5E1" } } },
+    xAxis: { type: "category", data: ["中国大陆", "中国港澳台", "海外"], axisLabel: { color: "#475569" }, axisLine: { lineStyle: { color: "#CBD5E1" } } },
     yAxis: { type: "value", axisLabel: { color: "#475569", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#E2E8F0", type: "dashed" } } },
     series: [
-      { name: "报名率", type: "bar", data: [r.domestic.rate, r.overseas.rate], itemStyle: { color: "#2563EB", borderRadius: [4, 4, 0, 0] }, barWidth: 40, label: { show: true, position: "top", color: "#0F172A", fontWeight: 600, formatter: p => (p.value*100).toFixed(2)+"%" } },
-      { name: "上期报考率", type: "bar", data: [r.domestic.last_rate, r.overseas.last_rate], itemStyle: { color: "#94A3B8", borderRadius: [4, 4, 0, 0] }, barWidth: 40, label: { show: true, position: "top", color: "#475569", formatter: p => (p.value*100).toFixed(2)+"%" } }
+      { name: "报名率", type: "bar", data: [r.domestic.rate, r.hkmotw.rate, r.overseas.rate], itemStyle: { color: "#2563EB", borderRadius: [4, 4, 0, 0] }, barWidth: 40, label: { show: true, position: "top", color: "#0F172A", fontWeight: 600, formatter: p => (p.value*100).toFixed(2)+"%" } },
+      { name: "上期报考率", type: "bar", data: [r.domestic.last_rate, r.hkmotw.last_rate, r.overseas.last_rate], itemStyle: { color: "#94A3B8", borderRadius: [4, 4, 0, 0] }, barWidth: 40, label: { show: true, position: "top", color: "#475569", formatter: p => (p.value*100).toFixed(2)+"%" } }
     ]
   });
   window.addEventListener("resize", () => chart.resize());
@@ -1537,13 +1569,14 @@ function renderRegionChart() {
 function renderRegionPie() {
   const chart = echarts.init(document.getElementById("chart-region-pie"));
   const r = DATA.region;
-  const total = r.domestic.reg + r.overseas.reg;
+  const total = r.domestic.reg + r.hkmotw.reg + r.overseas.reg;
   chart.setOption({
     tooltip: { trigger: "item" },
     series: [{
       type: "pie", radius: ["40%", "70%"], center: ["50%", "55%"],
       data: [
-        { value: r.domestic.reg, name: "国内 " + r.domestic.reg + "人", itemStyle: { color: "#2563EB" } },
+        { value: r.domestic.reg, name: "中国大陆 " + r.domestic.reg + "人", itemStyle: { color: "#2563EB" } },
+        { value: r.hkmotw.reg, name: "中国港澳台 " + r.hkmotw.reg + "人", itemStyle: { color: "#7C3AED" } },
         { value: r.overseas.reg, name: "海外 " + r.overseas.reg + "人", itemStyle: { color: "#0891B2" } }
       ],
       label: { color: "#0F172A", fontWeight: 600, fontSize: 13, formatter: p => p.name + "\\n" + (p.value/total*100).toFixed(1) + "%" }
@@ -1727,7 +1760,7 @@ function renderDistrict(name) {
       <div id="chart-district-stage" class="chart-container-sm"></div>
     </div>
     <div class="section">
-      <div class="section-title">国内/海外报名率（学区 vs 大盘）</div>
+      <div class="section-title">中国大陆/中国港澳台/海外报名率（学区 vs 大盘）</div>
       <div id="chart-district-region" class="chart-container-sm"></div>
     </div>
   </div>
@@ -1857,11 +1890,11 @@ function renderDistrictRegion(d, bm) {
     tooltip: { trigger: "axis", formatter: tooltipFmt },
     legend: { data: ["本学区", "大盘"], textStyle: { color: "#475569", fontWeight: 500 }, top: 0 },
     grid: { left: 50, right: 30, bottom: 30, top: 40 },
-    xAxis: { type: "category", data: ["国内", "海外"], axisLabel: { color: "#475569" }, axisLine: { lineStyle: { color: "#CBD5E1" } } },
+    xAxis: { type: "category", data: ["中国大陆", "中国港澳台", "海外"], axisLabel: { color: "#475569" }, axisLine: { lineStyle: { color: "#CBD5E1" } } },
     yAxis: { type: "value", axisLabel: { color: "#475569", formatter: v => pct(v) }, splitLine: { lineStyle: { color: "#E2E8F0", type: "dashed" } } },
     series: [
-      { name: "本学区", type: "bar", data: [d.region.domestic.rate, d.region.overseas.rate], itemStyle: { color: "#2563EB", borderRadius: [4, 4, 0, 0] }, barWidth: 30, label: { show: true, position: "top", color: "#0F172A", fontWeight: 600, fontSize: 11, formatter: p => (p.value*100).toFixed(2)+"%" } },
-      { name: "大盘", type: "bar", data: [bm.region.domestic, bm.region.overseas], itemStyle: { color: "#94A3B8", borderRadius: [4, 4, 0, 0] }, barWidth: 30, label: { show: true, position: "top", color: "#475569", fontSize: 11, formatter: p => (p.value*100).toFixed(2)+"%" } }
+      { name: "本学区", type: "bar", data: [d.region.domestic.rate, d.region.hkmotw.rate, d.region.overseas.rate], itemStyle: { color: "#2563EB", borderRadius: [4, 4, 0, 0] }, barWidth: 30, label: { show: true, position: "top", color: "#0F172A", fontWeight: 600, fontSize: 11, formatter: p => (p.value*100).toFixed(2)+"%" } },
+      { name: "大盘", type: "bar", data: [bm.region.domestic, bm.region.hkmotw, bm.region.overseas], itemStyle: { color: "#94A3B8", borderRadius: [4, 4, 0, 0] }, barWidth: 30, label: { show: true, position: "top", color: "#475569", fontSize: 11, formatter: p => (p.value*100).toFixed(2)+"%" } }
     ]
   });
 }
