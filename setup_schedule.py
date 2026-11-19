@@ -51,10 +51,12 @@ print(f"  报名结束日期: {date_end}")
 print(f"  每日播报时间: {', '.join(time_points)}")
 
 try:
+    dt_start = datetime.strptime(date_start.split()[0], "%Y-%m-%d")
     dt_end   = datetime.strptime(date_end.split()[0], "%Y-%m-%d")
     dt_next  = dt_end + timedelta(days=1)
-    ed_param = dt_end.strftime("%m/%d/%Y")     # schtasks /ED 格式
-    sd_next  = dt_next.strftime("%m/%d/%Y")    # 次日日期
+    sd_start = dt_start.strftime("%Y/%m/%d")   # schtasks /SD 格式（报名开始日，任务不会提前跑）
+    ed_param = dt_end.strftime("%Y/%m/%d")     # schtasks /ED 格式（须 yyyy/mm/dd）
+    sd_next  = dt_next.strftime("%Y/%m/%d")    # 次日日期（schtasks /SD 格式）
     next_date_str = dt_next.strftime("%Y-%m-%d")
 except ValueError:
     print(f"  [错误] 日期格式错误，应为 YYYY-MM-DD，当前值: '{date_end}'")
@@ -86,8 +88,8 @@ for t in time_points:
         "/tr", f'"{PYTHON_EXE}" "{script_main}"',
         "/sc", "DAILY",
         "/st", t,
+        "/sd", sd_start,   # 报名开始日当天才开跑（避免报名前一日提前触发）
         "/ed", ed_param,
-        "/rl", "HIGHEST",
         "/f"
     ]
     r = subprocess.run(cmd, capture_output=True, text=True,
@@ -109,7 +111,6 @@ cmd = [
     "/sc", "ONCE",
     "/sd", sd_next,
     "/st", "10:00",
-    "/rl", "HIGHEST",
     "/f"
 ]
 r = subprocess.run(cmd, capture_output=True, text=True,

@@ -1,170 +1,82 @@
 # 考级数据看板自动化系统
 
-## 🎯 快速开始
+> 本文件是**目录地图**。隔多久回来看这一页即可知道每个文件夹是干什么的。
 
-### 新季度启动（3步）
-
-1. **编辑配置**（5分钟）
-   - `数据源/本期考级目标.xlsx` - 季度、目标、日期
-   - `数据源/目标明细.xlsx` - MTD流速（总和=1.0）
-   - `auto_download_bi.py` - 更新DATE_START和DATE_END
-
-2. **配置定时任务**（1分钟）
-   ```bash
-   双击运行: setup_schedule.bat
-   ```
-
-3. **测试验证**（2分钟）
-   ```bash
-   python auto_update_and_publish.py
-   ```
-   访问：https://lindachen2026.github.io/art-exam-dashboard/dashboard.html
-
-### 报名期间（自动运行）
-
-✅ 无需手动操作，系统每天自动执行4次：
-- 上午 10:50
-- 下午 14:00
-- 下午 18:00
-- 晚上 23:59
-
-每次自动完成：下载BI数据 → 生成看板 → 推送GitHub
-
-### 报名结束后（2步）
-
-1. **禁用定时任务**
-   - Win+R → `taskschd.msc`
-   - 找到4个任务，右键禁用
-
-2. **归档历史数据**
-   ```bash
-   python archive_current_period.py
-   ```
+看板网址：https://lindachen2026.github.io/art-exam-dashboard/dashboard.html
+登录密码见 `说明文档/数据统计口径说明.txt` 第一行。
 
 ---
 
-## 📂 文件说明
+## 一句话分类
 
-### 核心脚本
-- `auto_download_bi.py` - BI数据自动下载
-- `generate_dashboard.py` - 看板生成
-- `auto_update_and_publish.py` - 主调度（下载→生成→推送）
-- `archive_current_period.py` - 历史归档
-- `setup_schedule.bat` - 定时任务配置
-
-### 配置文件
-- `数据源/本期考级目标.xlsx` - 季度基础配置
-- `数据源/目标明细.xlsx` - MTD流速配置
-- `数据源/往期数据.xlsx` - 历史对比数据（自动更新）
-
-### 数据文件
-- `数据源/考级学员信息表.xlsx` - BI下载原始数据（自动更新）
-- `数据源/本期各维度报名明细.xlsx` - 统计数据（自动生成）
-- `dashboard.html` - 生成的看板（自动推送GitHub）
+| 文件夹 / 文件 | 是什么 | 你要做什么 |
+|---|---|---|
+| **每期点击的程序\\** | **每期需要你双击运行的入口** | 每期点这里 |
+| **数据源\\** | 所有 Excel 数据（手动填的 + 程序自动更新的） | 每期开始前编辑 2 个文件 |
+| **说明文档\\** | 说明书 / 统计口径（给人和 AI 看） | 需要时翻 |
+| **程序文件（根目录 .py）** | 程序代码，**由 AI 运行，你不用点** | 不用管 |
+| **忽略的过程文件\\** | 已淘汰的旧脚本、旧说明（留档，不用管） | 不用管 |
+| **BI导数据表\\** | BI 下载的临时文件与报错截图（不用管） | 出问题时才看 |
 
 ---
 
-## 🔧 常用命令
-
-**手动测试更新**:
-```bash
-python auto_update_and_publish.py
-```
-
-**查看定时任务**:
-```bash
-taskschd.msc
-```
-
-**归档历史数据**:
-```bash
-python archive_current_period.py
-```
-
-**查看看板**:
-- 本地：`dashboard.html`
-- 云端：https://lindachen2026.github.io/art-exam-dashboard/dashboard.html
-
----
-
-## 📖 详细文档
-
-完整实施手册：[实施手册.md](实施手册.md)
-
----
-
-## ⚠️ 注意事项
-
-1. **MTD流速总和必须=1.0**
-   - 打开 `数据源/目标明细.xlsx - MTD sheet`
-   - 检查D列（每日流速）总和
-   - C列公式会自动计算目标人数
-
-2. **报名日期范围必须一致**
-   - `本期考级目标.xlsx` 中的报名时间
-   - `auto_download_bi.py` 中的 DATE_START/DATE_END
-   - `目标明细.xlsx` MTD的日期范围
-
-3. **报名结束后必须归档**
-   - 运行 `archive_current_period.py`
-   - 自动更新 `往期数据.xlsx`
-   - 新季度启动时无需手动补录
-
-4. **GitHub Pages自动部署**
-   - 推送到main分支后自动部署
-   - 约1-2分钟后生效
-   - 确保仓库已开启GitHub Pages
-
----
-
-## 🚨 故障排查
-
-**BI下载失败**:
-- 检查BI系统是否可访问
-- 检查账号密码是否正确
-- 查看错误截图：`BI导数据表/error_*.png`
-
-**看板数据异常**:
-- 检查 `考级学员信息表.xlsx` 是否为空
-- 检查MTD流速总和是否=1.0
-- 查看往期数据是否完整
-
-**GitHub推送失败**:
-- 检查网络连接
-- 检查Git配置
-- 手动执行 `git push origin main` 查看错误
-
-**定时任务未执行**:
-- 打开"任务计划程序"检查任务状态
-- 检查"上次运行结果"是否为0x0（成功）
-- 查看任务历史记录
-
----
-
-## 📊 系统架构
+## 一、每期你要点的（仅此一个文件夹）
 
 ```
-季度启动前（手动配置）
-    ↓
-配置定时任务（运行setup_schedule.bat）
-    ↓
-报名期间（自动运行，每天4次）
-    ├─ 10:50 → 下载BI → 生成看板 → 推送GitHub
-    ├─ 14:00 → 下载BI → 生成看板 → 推送GitHub
-    ├─ 18:00 → 下载BI → 生成看板 → 推送GitHub
-    └─ 23:59 → 下载BI → 生成看板 → 推送GitHub
-    ↓
-报名结束后
-    ├─ 禁用定时任务
-    ├─ 最后一次手动更新
-    └─ 运行归档脚本（archive_current_period.py）
+每期点击的程序\
+├── 1_启动本期定时任务.bat   ← 报名开始【前】点一次，创建全自动定时任务
+├── 2_手动刷新看板.bat       ← 想立刻用现有数据刷新看板时点（验证用）
+├── 3_停止定时任务.bat       ← 想提前手动停掉定时任务时点（一般不用）
+└── 4_本期收尾留档.bat       ← 报名结束次日手动补跑用（定时任务会自动做）
+```
+
+**正常一期只需点 `1_启动本期定时任务.bat` 一次**，其余全自动。详见 `说明文档\实施手册.md`。
+
+---
+
+## 二、每期你要编辑的数据（数据源\\）
+
+```
+数据源\
+├── 本期考级目标.xlsx    ← 每期手动编辑：季度、目标、报名日期、每日播报时间
+├── 目标明细.xlsx        ← 每期手动编辑：MTD sheet 每日流速（D列总和=1.0）
+├── 考级学员信息表.xlsx  ← 程序自动下载，不要动
+├── 考级各科目级别课时标准.xlsx ← 科目课时若有调整才改
+├── 往期数据.xlsx        ← 收尾时自动更新，不要动
+└── 历史归档\            ← 每期归档结果自动存这里
 ```
 
 ---
 
-## 版本信息
+## 三、程序文件（根目录，AI 运行，你不用点）
 
-- **版本**: v2.0
-- **更新日期**: 2026-07-02
-- **适用季度**: 2026Q3及以后
-- **GitHub仓库**: https://github.com/lindachen2026/art-exam-dashboard
+| 文件 | 作用 |
+|---|---|
+| `auto_update_and_publish.py` | 定时任务主脚本：下载BI → 生成看板 → 推送GitHub |
+| `auto_download_bi.py` | 从 BI 系统下载「考级学员信息表」（含账号密码，不进版本库） |
+| `generate_dashboard.py` | 生成 `dashboard.html`（密码在此文件第25行 `PASSWORD`） |
+| `setup_schedule.py` | 被 `1_启动本期定时任务.bat` 调用 |
+| `finalize_period.py` | 被 `4_本期收尾留档.bat` 调用（最后更新 + 归档） |
+| `stop_tasks.py` | 被 `3_停止定时任务.bat` 调用 |
+| `archive_current_period.py` | 数据归档 |
+| `generate_teacher_report.py` | 生成 `老师报名完成率报表.xlsx`（全量老师报表，非看板） |
+| `init_new_quarter.py` | 新季度初始化向导（交互式，一般用不到） |
+| `dashboard.html` | 看板成品（自动推送 GitHub） |
+| `index.html` / `.nojekyll` / `.github\` | GitHub Pages 部署用，不要动 |
+
+---
+
+## 四、报名期间自动运行（无需你操作）
+
+定时任务由 `1_启动本期定时任务.bat` 创建，报名期间每天自动执行 4 次：
+10:30 / 14:00 / 18:00 / 23:59，每次自动完成「下载BI → 生成看板 → 推送GitHub」。
+报名结束次日 10:00 自动执行最后一次更新并归档。
+
+查看任务：Win+R 输入 `taskschd.msc`。
+
+---
+
+## 五、GitHub Pages
+
+推送到 `main` 分支后自动部署，约 1–2 分钟生效。
+仓库：https://github.com/lindachen2026/art-exam-dashboard
