@@ -988,7 +988,9 @@ def gen_mj_conclusion():
 
 def gen_repeat_conclusion():
     """首报复报结论"""
-    first_ratio = first_report_count / total_report_count * 100 if total_report_count > 0 else 0
+    if total_report_count == 0:
+        return "暂无数据。"
+    first_ratio = first_report_count / total_report_count * 100
     # 找上期数据对比（取排序后当前季度的前一期）
     cur_norm = f"{quarter_label[:4]}{quarter_label[4:]}"
     last_rh = None
