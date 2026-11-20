@@ -103,9 +103,9 @@ for i in range(18, 30):
             'pool_count': int(row.iloc[4])
         }
 
-# 解析小组目标 (Row 34-65)
+# 解析小组目标 (Row 33-64；表头在第32行 学区|团队|小组|目标学员数_精准|学员数|报名率，比团队区少“向上取整”列)
 group_targets = {}
-for i in range(34, 65):
+for i in range(33, 65):
     row = df_team_target_raw.iloc[i]
     district = str(row.iloc[0]).strip()
     team = str(row.iloc[1]).strip()
@@ -115,8 +115,8 @@ for i in range(34, 65):
             'district': district,
             'team': team,
             'group': group,
-            'target': int(row.iloc[4]),
-            'pool_count': int(row.iloc[5])
+            'target': int(row.iloc[3]),
+            'pool_count': int(row.iloc[4])
         }
 
 # 1.5 老师目标
